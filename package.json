@@ -1,13 +1,18 @@
 {
-  "name": "hc-viewer",
+  "name": "@phuonghicas/hc-viewer",
   "version": "1.0.0",
-  "description": "Simple text viewer SDK",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
+  "description": "Lightweight text viewer SDK",
+  "main": "dist/index.cjs.js",
+  "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
   "files": ["dist"],
-  "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/phuonghicas/hc-viewer.git"
+  },
+  "homepage": "https://github.com/phuonghicas/hc-viewer#readme",
+  "bugs": {
+    "url": "https://github.com/phuonghicas/hc-viewer/issues"
   },
   "license": "MIT"
 }
