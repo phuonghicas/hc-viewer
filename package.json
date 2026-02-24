@@ -1,0 +1,13 @@
+{
+  "name": "hc-viewer",
+  "version": "1.0.0",
+  "description": "Simple text viewer SDK",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts"
+  },
+  "license": "MIT"
+}
