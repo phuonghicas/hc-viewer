@@ -1,18 +1,31 @@
 {
-  "name": "hc-viewer",
-  "version": "1.0.0",
-  "description": "Lightweight text viewer SDK",
-  "main": "dist/index.cjs.js",
-  "module": "dist/index.esm.js",
-  "types": "dist/index.d.ts",
-  "files": ["dist"],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/phuonghicas/hc-viewer.git"
-  },
-  "homepage": "https://github.com/phuonghicas/hc-viewer#readme",
-  "bugs": {
-    "url": "https://github.com/phuonghicas/hc-viewer/issues"
-  },
-  "license": "MIT"
+   "name": "hc-viewer-monorepo",
+   "private": true,
+   "workspaces": [
+      "packages/*"
+   ],
+   "version": "1.0.1",
+   "description": "Lightweight text viewer SDK",
+   "main": "dist/index.cjs.js",
+   "module": "dist/index.esm.js",
+   "types": "dist/index.d.ts",
+   "files": [
+      "dist"
+   ],
+   "repository": {
+      "type": "git",
+      "url": "https://github.com/phuonghicas/hc-viewer.git"
+   },
+   "homepage": "https://github.com/phuonghicas/hc-viewer#readme",
+   "bugs": {
+      "url": "https://github.com/phuonghicas/hc-viewer/issues"
+   },
+   "license": "MIT",
+   "devDependencies": {
+      "tsup": "^8.5.1",
+      "typescript": "^5.9.3"
+   },
+     "scripts": {
+    "build": "npm run build -w @phuonghicas/engine-core && npm run build -w hc-viewer"
+  }
 }
