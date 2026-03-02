@@ -1,14 +1,28 @@
-interface EngineOptions {
-    container: string | HTMLElement;
-    text: string;
-}
-
+type HcViewerOptions = {
+    container: HTMLElement | string;
+    url: string;
+    width?: string;
+    height?: string;
+    sandbox?: string;
+    allowedOrigin?: string;
+};
+type ViewerToolbarPayload = {
+    viewId: string;
+    formatViewer: string;
+    trigger: string;
+    timestamp: number;
+};
 declare class HcViewer {
-    private engine;
-    constructor(options: EngineOptions);
+    private container;
+    private iframe;
+    private options;
+    private toolbarListeners;
+    constructor(options: HcViewerOptions);
     render(): void;
-    update(text: string): void;
+    update(url: string): void;
     destroy(): void;
+    onSelectToolbarBtn(callback: (payload: ViewerToolbarPayload) => void): void;
+    private handleMessage;
 }
 
-export { HcViewer };
+export { HcViewer, type HcViewerOptions, type ViewerToolbarPayload };
