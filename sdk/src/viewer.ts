@@ -1,3 +1,6 @@
+import { CameraModule } from "./modules/camera";
+import { InteractionModule } from "./modules/interaction";
+
 export type HcViewerOptions = {
   container: HTMLElement | string;
   url: string;
@@ -23,35 +26,60 @@ type ViewerEventMap = {
   "interaction:pan-change": { enabled: boolean };
 };
 
+
+
 export class HcViewer {
-  private container: HTMLElement;
+  private container: HTMLElement | null = null;
   private iframe: HTMLIFrameElement | null = null;
-  private options: HcViewerOptions;
+  private initialized = false;
 
   private listeners: {
-    [K in keyof ViewerEventMap]?: Array<
-      (payload: ViewerEventMap[K]) => void
-    >;
+    [K in keyof ViewerEventMap]?: Array<(payload: ViewerEventMap[K]) => void>;
   } = {};
 
+  private options: HcViewerOptions;
+
+  // modules
+  public camera: CameraModule;
+  public interaction: InteractionModule;
+
   constructor(options: HcViewerOptions) {
+    this.options = options;
+
+    this.camera = new CameraModule(this);
+    this.interaction = new InteractionModule(this);
+  }
+
+  init() {
+    if (this.initialized) return;
+
     this.container =
-      typeof options.container === "string"
-        ? (document.querySelector(options.container) as HTMLElement)
-        : options.container;
+      typeof this.options.container === "string"
+        ? (document.querySelector(this.options.container) as HTMLElement)
+        : this.options.container;
 
     if (!this.container) {
       throw new Error("Container element not found");
     }
 
-    this.options = options;
     window.addEventListener("message", this.handleMessage);
+
+    this.initialized = true;
+  }
+
+  private ensureInit() {
+    if (!this.initialized) {
+      throw new Error("Call viewer.init() before using viewer");
+    }
   }
 
   render() {
+    this.ensureInit();
+
     if (this.iframe) return;
 
     const iframe = document.createElement("iframe");
+
     iframe.src = this.options.url;
     iframe.width = this.options.width || "100%";
     iframe.height = this.options.height || "100%";
@@ -61,45 +89,47 @@ export class HcViewer {
       iframe.setAttribute("sandbox", this.options.sandbox);
     }
 
-    this.container.appendChild(iframe);
+    this.container!.appendChild(iframe);
     this.iframe = iframe;
   }
 
   destroy() {
     window.removeEventListener("message", this.handleMessage);
-    if (this.iframe) {
+
+    if (this.iframe && this.container) {
       this.container.removeChild(this.iframe);
-      this.iframe = null;
     }
+
+    this.iframe = null;
     this.listeners = {};
+    this.initialized = false;
   }
 
-  // ========================
-  // EVENT SYSTEM (TYPED)
-  // ========================
+  // =========================
+  // EVENT SYSTEM
+  // =========================
 
   on<K extends keyof ViewerEventMap>(
     event: K,
     callback: (payload: ViewerEventMap[K]) => void
   ) {
-    if (!this.listeners[event]) {
-      this.listeners[event] = [];
-    }
+    if (!this.listeners[event]) this.listeners[event] = [];
+
     this.listeners[event]!.push(callback);
   }
 
-  private emit<K extends keyof ViewerEventMap>(
+  emit<K extends keyof ViewerEventMap>(
     event: K,
     payload: ViewerEventMap[K]
   ) {
     this.listeners[event]?.forEach(cb => cb(payload));
   }
 
-  // ========================
-  // SDK → VIEWER
-  // ========================
+  // =========================
+  // INTERNAL MESSAGE API
+  // =========================
 
-  private postToViewer(type: ViewerMessageType, payload: any) {
+  postToViewer(type: ViewerMessageType, payload: any) {
     if (!this.iframe?.contentWindow) return;
 
     this.iframe.contentWindow.postMessage(
@@ -112,41 +142,16 @@ export class HcViewer {
     );
   }
 
-  zoomIn(percent: number) {
-    this.postToViewer(ViewerMessageType.ZOOM, {
-      action: "in",
-      percent,
-    });
-  }
-
-  zoomOut(percent: number) {
-    this.postToViewer(ViewerMessageType.ZOOM, {
-      action: "out",
-      percent,
-    });
-  }
-
-  goHome() {
-    this.postToViewer(ViewerMessageType.HOME, {});
-  }
-
-  enablePan() {
-    this.postToViewer(ViewerMessageType.PAN_TOGGLE, { enabled: true });
-  }
-
-  disablePan() {
-    this.postToViewer(ViewerMessageType.PAN_TOGGLE, { enabled: false });
-  }
-
-  // ========================
-  // VIEWER → SDK
-  // ========================
+  // =========================
+  // MESSAGE HANDLER
+  // =========================
 
   private handleMessage = (event: MessageEvent) => {
     if (!this.iframe) return;
     if (event.source !== this.iframe.contentWindow) return;
 
     const data = event.data;
+
     if (!data || data.source !== "HC_VIEWER") return;
 
     if (
