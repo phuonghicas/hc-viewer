@@ -1,6 +1,9 @@
 // sdk/src/core/emitter.ts
+
 export class Emitter<EventMap extends Record<string, any>> {
-  private listeners: { [K in keyof EventMap]?: Array<(payload: EventMap[K]) => void> } = {};
+  private listeners: {
+    [K in keyof EventMap]?: Array<(payload: EventMap[K]) => void>;
+  } = {};
 
   on<K extends keyof EventMap>(event: K, cb: (payload: EventMap[K]) => void): () => void {
     const arr = (this.listeners[event] ||= []);
@@ -11,8 +14,10 @@ export class Emitter<EventMap extends Record<string, any>> {
   off<K extends keyof EventMap>(event: K, cb: (payload: EventMap[K]) => void) {
     const arr = this.listeners[event];
     if (!arr) return;
+
     const idx = arr.indexOf(cb);
     if (idx >= 0) arr.splice(idx, 1);
+
     if (arr.length === 0) delete this.listeners[event];
   }
 

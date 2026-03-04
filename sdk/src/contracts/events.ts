@@ -1,4 +1,4 @@
-// sdk/src/contracts/events.ts
+
 export type ViewerEventMap = {
   "camera:home": { timestamp: number };
   "node:select": { nodeId: string; timestamp: number };
@@ -6,4 +6,5 @@ export type ViewerEventMap = {
 };
 
 export type ViewerEventKey = keyof ViewerEventMap;
-export type ViewerEventPayload<K extends ViewerEventKey> = ViewerEventMap[K]; 
+
+export type ViewerEventPayload<K extends ViewerEventKey> = ViewerEventMap[K];

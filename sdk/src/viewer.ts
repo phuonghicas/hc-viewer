@@ -38,7 +38,7 @@ type IncomingMessage =
       type: ViewerMessageType.PAN_CHANGE;
       payload: ViewerEventMap["interaction:pan-change"];
     }
-  // fallback: nếu viewer bắn thêm event lạ thì vẫn không crash
+  // fallback
   | { source: "HC_VIEWER"; type: string; payload: any };
 
 export class HcViewer {
