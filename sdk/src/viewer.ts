@@ -1,5 +1,5 @@
-import { CameraModule } from "./modules/camera";
-import { InteractionModule } from "./modules/interaction";
+import { CameraModule } from "./modules/camera.module";
+import { InteractionModule } from "./modules/interaction.module";
 
 export type HcViewerOptions = {
   container: HTMLElement | string;
