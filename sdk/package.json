@@ -1,6 +1,6 @@
 {
   "name": "hc-viewer",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -8,5 +8,9 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts --no-splitting"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
   }
 }
