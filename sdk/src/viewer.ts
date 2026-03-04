@@ -1,5 +1,9 @@
+// sdk/src/viewer.ts
 import { CameraModule } from "./modules/camera.module";
 import { InteractionModule } from "./modules/interaction.module";
+import { NodeModule } from "./modules/node.module";
+import { Emitter } from "./core/emitter";
+import type { ViewerEventMap, ViewerEventKey, ViewerEventPayload } from "./contracts/events";
 
 export type HcViewerOptions = {
   container: HTMLElement | string;
@@ -20,34 +24,25 @@ export enum ViewerMessageType {
   PAN_CHANGE = "viewer-pan-change",
 }
 
-type ViewerEventMap = {
-  "camera:home": { timestamp: number };
-  "node:select": { nodeId: string; timestamp: number };
-  "interaction:pan-change": { enabled: boolean };
-};
-
-
-
 export class HcViewer {
   private container: HTMLElement | null = null;
   private iframe: HTMLIFrameElement | null = null;
   private initialized = false;
 
-  private listeners: {
-    [K in keyof ViewerEventMap]?: Array<(payload: ViewerEventMap[K]) => void>;
-  } = {};
-
+  private events = new Emitter<ViewerEventMap>();
   private options: HcViewerOptions;
 
   // modules
   public camera: CameraModule;
   public interaction: InteractionModule;
+  public node: NodeModule;
 
   constructor(options: HcViewerOptions) {
     this.options = options;
 
     this.camera = new CameraModule(this);
     this.interaction = new InteractionModule(this);
+    this.node = new NodeModule(this);
   }
 
   init() {
@@ -58,36 +53,27 @@ export class HcViewer {
         ? (document.querySelector(this.options.container) as HTMLElement)
         : this.options.container;
 
-    if (!this.container) {
-      throw new Error("Container element not found");
-    }
+    if (!this.container) throw new Error("Container element not found");
 
     window.addEventListener("message", this.handleMessage);
-
     this.initialized = true;
   }
 
   private ensureInit() {
-    if (!this.initialized) {
-      throw new Error("Call viewer.init() before using viewer");
-    }
+    if (!this.initialized) throw new Error("Call viewer.init() before using viewer");
   }
 
   render() {
     this.ensureInit();
-
     if (this.iframe) return;
 
     const iframe = document.createElement("iframe");
-
     iframe.src = this.options.url;
     iframe.width = this.options.width || "100%";
     iframe.height = this.options.height || "100%";
     iframe.style.border = "none";
 
-    if (this.options.sandbox) {
-      iframe.setAttribute("sandbox", this.options.sandbox);
-    }
+    if (this.options.sandbox) iframe.setAttribute("sandbox", this.options.sandbox);
 
     this.container!.appendChild(iframe);
     this.iframe = iframe;
@@ -96,48 +82,32 @@ export class HcViewer {
   destroy() {
     window.removeEventListener("message", this.handleMessage);
 
-    if (this.iframe && this.container) {
-      this.container.removeChild(this.iframe);
-    }
-
+    if (this.iframe && this.container) this.container.removeChild(this.iframe);
     this.iframe = null;
-    this.listeners = {};
+
+    this.events.clear();
     this.initialized = false;
   }
 
   // =========================
-  // EVENT SYSTEM
+  // INTERNAL EVENT API (modules dùng)
   // =========================
-
-  on<K extends keyof ViewerEventMap>(
-    event: K,
-    callback: (payload: ViewerEventMap[K]) => void
-  ) {
-    if (!this.listeners[event]) this.listeners[event] = [];
-
-    this.listeners[event]!.push(callback);
+  _on<K extends ViewerEventKey>(event: K, cb: (payload: ViewerEventPayload<K>) => void) {
+    return this.events.on(event, cb);
   }
 
-  emit<K extends keyof ViewerEventMap>(
-    event: K,
-    payload: ViewerEventMap[K]
-  ) {
-    this.listeners[event]?.forEach(cb => cb(payload));
+  _emit<K extends ViewerEventKey>(event: K, payload: ViewerEventPayload<K>) {
+    this.events.emit(event, payload);
   }
 
   // =========================
   // INTERNAL MESSAGE API
   // =========================
-
   postToViewer(type: ViewerMessageType, payload: any) {
     if (!this.iframe?.contentWindow) return;
 
     this.iframe.contentWindow.postMessage(
-      {
-        source: "HC_SDK",
-        type,
-        payload,
-      },
+      { source: "HC_SDK", type, payload },
       this.options.allowedOrigin || "*"
     );
   }
@@ -145,33 +115,24 @@ export class HcViewer {
   // =========================
   // MESSAGE HANDLER
   // =========================
-
   private handleMessage = (event: MessageEvent) => {
     if (!this.iframe) return;
     if (event.source !== this.iframe.contentWindow) return;
 
     const data = event.data;
-
     if (!data || data.source !== "HC_VIEWER") return;
 
-    if (
-      this.options.allowedOrigin &&
-      event.origin !== this.options.allowedOrigin
-    ) {
-      return;
-    }
+    if (this.options.allowedOrigin && event.origin !== this.options.allowedOrigin) return;
 
     switch (data.type) {
       case ViewerMessageType.HOME_CLICK:
-        this.emit("camera:home", data.payload);
+        this._emit("camera:home", data.payload);
         break;
-
       case ViewerMessageType.NODE_SELECT:
-        this.emit("node:select", data.payload);
+        this._emit("node:select", data.payload);
         break;
-
       case ViewerMessageType.PAN_CHANGE:
-        this.emit("interaction:pan-change", data.payload);
+        this._emit("interaction:pan-change", data.payload);
         break;
     }
   };

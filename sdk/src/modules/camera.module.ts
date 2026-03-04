@@ -1,20 +1,22 @@
-import { HcViewer, ViewerMessageType } from "../viewer";
+import { ViewerMessageType, HcViewer } from "../viewer";
 
 export class CameraModule {
-  constructor(private viewer: HcViewer) {}
+  public on: {
+    home: (cb: (payload: { timestamp: number }) => void) => () => void;
+  };
+
+  constructor(private viewer: HcViewer) {
+    this.on = {
+      home: (cb) => this.viewer._on("camera:home", cb),
+    };
+  }
 
   zoomIn(percent: number) {
-    this.viewer.postToViewer(ViewerMessageType.ZOOM, {
-      action: "in",
-      percent,
-    });
+    this.viewer.postToViewer(ViewerMessageType.ZOOM, { action: "in", percent });
   }
 
   zoomOut(percent: number) {
-    this.viewer.postToViewer(ViewerMessageType.ZOOM, {
-      action: "out",
-      percent,
-    });
+    this.viewer.postToViewer(ViewerMessageType.ZOOM, { action: "out", percent });
   }
 
   home() {
