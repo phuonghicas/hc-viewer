@@ -24,22 +24,36 @@ export enum ViewerMessageType {
   PAN_CHANGE = "viewer-pan-change",
 }
 
+type OutgoingMessage = {
+  source: "HC_SDK";
+  type: ViewerMessageType;
+  payload: any;
+};
+
+type IncomingMessage =
+  | { source: "HC_VIEWER"; type: ViewerMessageType.HOME_CLICK; payload: ViewerEventMap["camera:home"] }
+  | { source: "HC_VIEWER"; type: ViewerMessageType.NODE_SELECT; payload: ViewerEventMap["node:select"] }
+  | {
+      source: "HC_VIEWER";
+      type: ViewerMessageType.PAN_CHANGE;
+      payload: ViewerEventMap["interaction:pan-change"];
+    }
+  // fallback: nếu viewer bắn thêm event lạ thì vẫn không crash
+  | { source: "HC_VIEWER"; type: string; payload: any };
+
 export class HcViewer {
   private container: HTMLElement | null = null;
   private iframe: HTMLIFrameElement | null = null;
   private initialized = false;
 
   private events = new Emitter<ViewerEventMap>();
-  private options: HcViewerOptions;
 
   // modules
   public camera: CameraModule;
   public interaction: InteractionModule;
   public node: NodeModule;
 
-  constructor(options: HcViewerOptions) {
-    this.options = options;
-
+  constructor(private options: HcViewerOptions) {
     this.camera = new CameraModule(this);
     this.interaction = new InteractionModule(this);
     this.node = new NodeModule(this);
@@ -50,7 +64,7 @@ export class HcViewer {
 
     this.container =
       typeof this.options.container === "string"
-        ? (document.querySelector(this.options.container) as HTMLElement)
+        ? (document.querySelector(this.options.container) as HTMLElement | null)
         : this.options.container;
 
     if (!this.container) throw new Error("Container element not found");
@@ -69,8 +83,13 @@ export class HcViewer {
 
     const iframe = document.createElement("iframe");
     iframe.src = this.options.url;
+
+    // attribute + style cho chắc
     iframe.width = this.options.width || "100%";
     iframe.height = this.options.height || "100%";
+    iframe.style.width = this.options.width || "100%";
+    iframe.style.height = this.options.height || "100%";
+
     iframe.style.border = "none";
 
     if (this.options.sandbox) iframe.setAttribute("sandbox", this.options.sandbox);
@@ -80,13 +99,18 @@ export class HcViewer {
   }
 
   destroy() {
+    // remove listener trước
     window.removeEventListener("message", this.handleMessage);
 
-    if (this.iframe && this.container) this.container.removeChild(this.iframe);
+    // remove iframe
+    if (this.iframe?.parentElement) this.iframe.parentElement.removeChild(this.iframe);
     this.iframe = null;
 
+    // clear events
     this.events.clear();
+
     this.initialized = false;
+    this.container = null;
   }
 
   // =========================
@@ -94,6 +118,10 @@ export class HcViewer {
   // =========================
   _on<K extends ViewerEventKey>(event: K, cb: (payload: ViewerEventPayload<K>) => void) {
     return this.events.on(event, cb);
+  }
+
+  _off<K extends ViewerEventKey>(event: K, cb: (payload: ViewerEventPayload<K>) => void) {
+    this.events.off(event, cb);
   }
 
   _emit<K extends ViewerEventKey>(event: K, payload: ViewerEventPayload<K>) {
@@ -104,35 +132,44 @@ export class HcViewer {
   // INTERNAL MESSAGE API
   // =========================
   postToViewer(type: ViewerMessageType, payload: any) {
-    if (!this.iframe?.contentWindow) return;
+    const w = this.iframe?.contentWindow;
+    if (!w) return;
 
-    this.iframe.contentWindow.postMessage(
-      { source: "HC_SDK", type, payload },
-      this.options.allowedOrigin || "*"
-    );
+    const msg: OutgoingMessage = { source: "HC_SDK", type, payload };
+    w.postMessage(msg, this.options.allowedOrigin || "*");
   }
 
   // =========================
   // MESSAGE HANDLER
   // =========================
   private handleMessage = (event: MessageEvent) => {
-    if (!this.iframe) return;
-    if (event.source !== this.iframe.contentWindow) return;
+    const iframeWindow = this.iframe?.contentWindow;
+    if (!iframeWindow) return;
 
-    const data = event.data;
+    // chỉ nhận message từ đúng iframe
+    if (event.source !== iframeWindow) return;
+
+    const data = event.data as IncomingMessage;
     if (!data || data.source !== "HC_VIEWER") return;
 
+    // nếu user set allowedOrigin thì validate
     if (this.options.allowedOrigin && event.origin !== this.options.allowedOrigin) return;
 
     switch (data.type) {
       case ViewerMessageType.HOME_CLICK:
         this._emit("camera:home", data.payload);
         break;
+
       case ViewerMessageType.NODE_SELECT:
         this._emit("node:select", data.payload);
         break;
+
       case ViewerMessageType.PAN_CHANGE:
         this._emit("interaction:pan-change", data.payload);
+        break;
+
+      default:
+        // ignore unknown
         break;
     }
   };
