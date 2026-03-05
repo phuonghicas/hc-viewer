@@ -1,6 +1,9 @@
-import path from "path";
+/* eslint-disable @typescript-eslint/no-var-requires */
+/* eslint-disable no-undef */
 
-export default {
+const path = require("path");
+
+module.exports = {
   mode: "development",
   entry: "./src/index.js",
   output: {
@@ -9,7 +12,7 @@ export default {
     clean: true,
   },
   devServer: {
-    static: "./public",
+    static: path.resolve(__dirname, "public"),
     port: 5173,
   },
 };

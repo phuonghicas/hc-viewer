@@ -9,7 +9,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   const viewer = new HcViewer({
     container: "#app",
-    url: "http://localhost:3000/mainviewer",
+    url: "http://localhost:3000/mainviewer?fileList=%5B%7B%22baseFileId%22%3A%22c6c21c49-fa2b-4506-9bb1-8ef6716c195e%22%2C%22baseMajorRev%22%3A0%2C%22baseMinorRev%22%3A0%2C%22fileName%22%3A%22SP_CHI1-DC1-2_detached.rvt%22%7D%5D",
     allowedOrigin: "http://localhost:3000",
   });
 

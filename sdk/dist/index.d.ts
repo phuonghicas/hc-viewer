@@ -1,3 +1,54 @@
+declare class CameraModule {
+    private viewer;
+    on: {
+        home: (cb: (payload: {
+            timestamp: number;
+        }) => void) => () => void;
+    };
+    constructor(viewer: HcViewer);
+    zoomIn(percent: number): void;
+    zoomOut(percent: number): void;
+    home(): void;
+}
+
+declare class InteractionModule {
+    private viewer;
+    on: {
+        panChange: (cb: (payload: {
+            enabled: boolean;
+        }) => void) => () => void;
+    };
+    constructor(viewer: HcViewer);
+    enablePan(): void;
+    disablePan(): void;
+}
+
+declare class NodeModule {
+    private viewer;
+    on: {
+        select: (cb: (payload: {
+            nodeId: string;
+            timestamp: number;
+        }) => void) => () => void;
+    };
+    constructor(viewer: HcViewer);
+}
+
+type ViewerEventMap = {
+    "camera:home": {
+        timestamp: number;
+    };
+    "node:select": {
+        nodeId: string;
+        timestamp: number;
+    };
+    "interaction:pan-change": {
+        enabled: boolean;
+    };
+};
+type ViewerEventKey = keyof ViewerEventMap;
+type ViewerEventPayload<K extends ViewerEventKey> = ViewerEventMap[K];
+
 type HcViewerOptions = {
     container: HTMLElement | string;
     url: string;
@@ -14,34 +65,24 @@ declare enum ViewerMessageType {
     NODE_SELECT = "viewer-node-select",
     PAN_CHANGE = "viewer-pan-change"
 }
-type ViewerEventMap = {
-    "camera:home": {
-        timestamp: number;
-    };
-    "node:select": {
-        nodeId: string;
-        timestamp: number;
-    };
-    "interaction:pan-change": {
-        enabled: boolean;
-    };
-};
 declare class HcViewer {
+    private options;
     private container;
     private iframe;
-    private options;
-    private listeners;
+    private initialized;
+    private events;
+    camera: CameraModule;
+    interaction: InteractionModule;
+    node: NodeModule;
     constructor(options: HcViewerOptions);
+    init(): void;
+    private ensureInit;
     render(): void;
     destroy(): void;
-    on<K extends keyof ViewerEventMap>(event: K, callback: (payload: ViewerEventMap[K]) => void): void;
-    private emit;
-    private postToViewer;
-    zoomIn(percent: number): void;
-    zoomOut(percent: number): void;
-    goHome(): void;
-    enablePan(): void;
-    disablePan(): void;
+    _on<K extends ViewerEventKey>(event: K, cb: (payload: ViewerEventPayload<K>) => void): () => void;
+    _off<K extends ViewerEventKey>(event: K, cb: (payload: ViewerEventPayload<K>) => void): void;
+    _emit<K extends ViewerEventKey>(event: K, payload: ViewerEventPayload<K>): void;
+    postToViewer(type: ViewerMessageType, payload: any): void;
     private handleMessage;
 }
 
