@@ -1,5 +1,5 @@
-import { HcViewer, ViewerMessageType } from "../viewer";
-
+import { HcViewer } from "../viewer";
+import { ViewerMessageType } from "../contracts/messages";
 export class InteractionModule {
   public on: {
     panChange: (cb: (payload: { enabled: boolean }) => void) => () => void;

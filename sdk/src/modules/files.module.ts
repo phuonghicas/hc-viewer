@@ -6,16 +6,14 @@ import type {
 } from "../contracts/events";
 import { HcViewer } from "../viewer";
 
-// config tách riêng để API sạch
+const DEFAULT_API_BASE_URL = "https://dev.3dviewer.anybim.vn";
+const DEFAULT_VIEWER_ORIGIN = "http://localhost:3000";
+
 export type FilesConfig = {
-  baseUrl?: string;     // e.g. https://dev.3dviewer.anybim.vn (without trailing /)
-  viewerPath?: string;  // e.g. /mainviewer
-  uploadPath?: string;  // path param for upload endpoint
-  polling?: {
-    maxAttempts?: number;
-    intervalMs?: number;
-  };
-  notify?: boolean | { success?: boolean; error?: boolean }; // nếu bạn muốn giữ hành vi cũ
+  baseUrl?: string;    
+  viewerPath?: string;  
+  uploadPath?: string;  
+  notify?: boolean | { success?: boolean; error?: boolean }; 
 };
 
 type CacheListItem = {
@@ -42,7 +40,6 @@ export class FilesModule {
     uploadError: (cb: (payload: { fileName: string; error: string }) => void) => () => void;
 
     conversionStart: (cb: (payload: { fileName: string }) => void) => () => void;
-    conversionProgress: (cb: (payload: { attempt: number; maxAttempts: number; cacheStatus?: number }) => void) => () => void;
     conversionSuccess: (cb: (payload: PreparedViewerData) => void) => () => void;
     conversionError: (cb: (payload: { fileName: string; error: string }) => void) => () => void;
 
@@ -62,10 +59,11 @@ export class FilesModule {
     stage: "idle",
   };
 
-  // cache upload session giống code cũ (signature-based)
+ 
   private lastUploadSession: { signature: string; baseFileId: string; fileName: string; uploadPath: string } | null = null;
 
   constructor(private viewer: HcViewer) {
+    // Bind external event helpers to internal typed emitter events.
     this.on = {
       state: (cb) => this.viewer._on("files:state", cb),
 
@@ -74,7 +72,6 @@ export class FilesModule {
       uploadError: (cb) => this.viewer._on("files:upload:error", cb),
 
       conversionStart: (cb) => this.viewer._on("files:conversion:start", cb),
-      conversionProgress: (cb) => this.viewer._on("files:conversion:progress", cb),
       conversionSuccess: (cb) => this.viewer._on("files:conversion:success", cb),
       conversionError: (cb) => this.viewer._on("files:conversion:error", cb),
 
@@ -87,15 +84,18 @@ export class FilesModule {
     };
   }
 
+  // Merge file-pipeline runtime config.
   setConfig(next: FilesConfig) {
     this.config = { ...this.config, ...next };
   }
 
+  // Return a snapshot of current loading state.
   getState(): LoadStatePayload {
     return { ...this.state };
   }
 
   // ---------- public pipeline ----------
+  // Upload file to conversion server and keep generated baseFileId in session.
   async upload(file?: File): Promise<{ fileName: string; baseFileId: string }> {
     const target = this.resolveFile(file);
     return this.withOperation({ stage: "uploading", message: "Uploading file..." }, async () => {
@@ -108,16 +108,23 @@ export class FilesModule {
     });
   }
 
+  // Trigger conversion flow and resolve final viewer metadata.
   async convert(file?: File): Promise<PreparedViewerData> {
     const target = this.resolveFile(file);
     return this.withOperation({ stage: "converting", message: "Converting file..." }, async () => {
       this.viewer._emit("files:conversion:start", { fileName: target.name });
-      const prepared = await this.convertInternal(target);
-      this.viewer._emit("files:conversion:success", prepared);
-      return prepared;
+      try {
+        const prepared = await this.convertInternal(target);
+        this.viewer._emit("files:conversion:success", prepared);
+        return prepared;
+      } catch (e) {
+        this.viewer._emit("files:conversion:error", { fileName: target.name, error: this.toErrorMessage(e) });
+        throw e;
+      }
     });
   }
 
+  // Convenience API: upload first, then convert in one call.
   async prepare(file?: File): Promise<PreparedViewerData> {
     const target = this.resolveFile(file);
     return this.withOperation({ stage: "uploading", message: "Preparing file..." }, async () => {
@@ -127,8 +134,9 @@ export class FilesModule {
     });
   }
 
+  // Open iframe with an already prepared viewer URL.
   open(input: PreparedViewerData | { url: string }) {
-    const url = "url" in input ? input.url : input.url;
+    const url = input.url;
     this.viewer._emit("files:render:start", { url });
     try {
       this.viewer.open(url);
@@ -139,12 +147,13 @@ export class FilesModule {
     }
   }
 
+  // Full pipeline: upload + convert + open iframe.
   async render(file?: File): Promise<PreparedViewerData> {
     const target = this.resolveFile(file);
 
-    return this.withOperation({ stage: "uploading", message: "Uploading + converting + opening..." }, async () => {
-      await this.uploadInternal(target);
-      const prepared = await this.convertInternal(target);
+   return this.withOperation({ stage: "uploading", message: "Uploading + converting + opening..." }, async () => {
+     await this.upload(target);
+     const prepared = await this.convert(target);
 
       // open viewer
       this.updateState({ stage: "rendering", message: "Opening viewer..." });
@@ -155,8 +164,7 @@ export class FilesModule {
     });
   }
 
-  // ---------- internals (ported from feature-ver-6) ----------
-
+  // Resolve file argument, fallback to options.file, and persist it back.
   private resolveFile(file?: File): File {
     const optFile = this.viewer.getOptions().file;
     const target = file || optFile;
@@ -166,36 +174,47 @@ export class FilesModule {
     return target;
   }
 
+  // Trim input URL and remove trailing slash.
   private normalizeBaseUrl(input: string): string {
     return input.trim().replace(/\/+$/, "");
   }
 
+  // Resolve API base URL with default fallback.
   private resolveBaseUrl(): string {
-    const raw = this.config.baseUrl || this.viewer.getOptions().baseUrl || "";
-    if (!raw) throw new Error("Missing baseUrl for files pipeline");
+    const raw = this.config.baseUrl || this.viewer.getOptions().baseUrl || DEFAULT_API_BASE_URL;
     return this.normalizeBaseUrl(raw);
   }
 
+  // Resolve viewer route path (e.g. /mainviewer).
   private resolveViewerPath(): string {
     const p = (this.config.viewerPath || this.viewer.getOptions().viewerPath || "/mainviewer").trim();
     if (!p) return "/mainviewer";
     return p.startsWith("/") ? p : `/${p}`;
   }
 
+  // Viewer host used to open iframe after conversion completes.
+  private resolveViewerOrigin(): string {
+    return this.normalizeBaseUrl(DEFAULT_VIEWER_ORIGIN);
+  }
+
+  // Build conversion service root from API base URL.
   private resolveHostConversion(): string {
     const baseUrl = this.resolveBaseUrl();
-    // giữ y logic cũ: nếu baseUrl đã endsWith /service/conversion thì dùng luôn :contentReference[oaicite:13]{index=13}
+ 
     return baseUrl.endsWith("/service/conversion") ? baseUrl : `${baseUrl}/service/conversion`;
   }
 
+  // Resolve upload path sent to conversion APIs.
   private getUploadPath(): string {
     return this.config.uploadPath || this.viewer.getOptions().uploadPath || ".";
   }
 
+  // Build a stable in-memory signature to identify same file uploads.
   private fileSignature(file: File): string {
     return `${file.name}::${file.size}::${file.lastModified}`;
   }
 
+  // Create a UUID-like baseFileId when caller does not provide one.
   private createBaseFileId(): string {
     if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
     return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
@@ -205,6 +224,7 @@ export class FilesModule {
     });
   }
 
+  // Create upload session metadata reused between upload and convert.
   private createUploadSession(file: File) {
     return {
       signature: this.fileSignature(file),
@@ -214,6 +234,7 @@ export class FilesModule {
     };
   }
 
+  // Return previous upload session for same file and upload path.
   private getUploadSessionForFile(file: File) {
     if (!this.lastUploadSession) return null;
     const sameFile = this.lastUploadSession.signature === this.fileSignature(file);
@@ -221,6 +242,7 @@ export class FilesModule {
     return sameFile && samePath ? this.lastUploadSession : null;
   }
 
+  // Call upload endpoint and persist upload session on success.
   private async uploadInternal(file: File): Promise<void> {
     this.updateState({ stage: "uploading", message: "Uploading file..." });
 
@@ -247,7 +269,8 @@ export class FilesModule {
     }
   }
 
-   private buildCachePayload(file: File, baseFileId: string) {
+  // Build StreamFile payload compatible with conversion service.
+  private buildCachePayload(file: File, baseFileId: string) {
     const createdDate = new Date().toISOString();
     return {
       filename: file.name,
@@ -294,6 +317,7 @@ export class FilesModule {
     };
   }
 
+  // Submit conversion/caching request and return service response.
   private async cacheFile(
     file: File,
     baseFileId: string
@@ -320,75 +344,47 @@ export class FilesModule {
     return (await response.json()) as CacheResponseItem;
   }
 
-  private async waitForCacheReady(item: CacheListItem): Promise<void> {
-    const maxAttempts = this.options.polling?.maxAttempts ?? 90;
-    const delayMs = this.options.polling?.intervalMs ?? 2000;
-
-    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-      const status = await this.getCacheByList(item);
-      this.emit("conversion:progress", {
-        attempt: attempt + 1,
-        maxAttempts,
-        cacheStatus: status?.cacheStatus,
-      });
-      this.updateLoadState({
-        stage: "converting",
-        message: "Waiting conversion result...",
-        attempt: attempt + 1,
-        maxAttempts,
-      });
-
-      if (status?.cacheStatus === 2) return;
-      if (status?.cacheStatus === 3) {
-        throw new Error("Conversion failed with cacheStatus=3");
-      }
-      await new Promise(resolve => setTimeout(resolve, delayMs));
-    }
-
-    throw new Error("Timeout waiting for conversion result");
-  }
-
+  // Convert file and generate final iframe URL with query string.
   private async convertInternal(file: File): Promise<PreparedViewerData> {
-    // NOTE: phần convert/cache/poll bạn copy nguyên từ feature-ver-6 sang đây:
-    // - buildCachePayload(...)
-    // - cacheFile(...)
-    // - waitForCacheReady(...)
-    // - build viewer url: baseUrl + viewerPath + query (fileList JSON) :contentReference[oaicite:15]{index=15}
-    //
-    // Ở đây mình để skeleton để bạn “move code” cho nhanh.
 
     this.updateState({ stage: "converting", message: "Converting file..." });
 
     const uploadSession = this.getUploadSessionForFile(file) || this.createUploadSession(file);
-    const baseFileIdSeed = uploadSession.baseFileId;
+    const seedBaseFileId = uploadSession.baseFileId;
 
-    // TODO: cacheFile(file, baseFileIdSeed) -> returns { baseFileId, baseMajorRev, baseMinorRev, cacheStatus, filename }
-    // TODO: if cacheStatus !== 2 => waitForCacheReady(cacheListItem) w/ polling config :contentReference[oaicite:16]{index=16}
-    const baseFileId = baseFileIdSeed;
-    const baseMajorRev = 0;
-    const baseMinorRev = 0;
-    const fileName = file.name;
+   // 1) request cache/convert
+    const cacheResult = await this.cacheFile(file, seedBaseFileId);
+
+    const baseFileId = cacheResult.baseFileId ?? seedBaseFileId;
+    const baseMajorRev = cacheResult.baseMajorRev ?? 0;
+    const baseMinorRev = cacheResult.baseMinorRev ?? 0;
+    const fileName = cacheResult.filename || file.name;
 
     const cacheListItem: CacheListItem = { baseFileId, baseMajorRev, baseMinorRev, fileName };
 
-    // query giống code cũ (fileList JSON)
-    const query = new URLSearchParams({
-      fileList: JSON.stringify([cacheListItem]),
-    }).toString();
+    // Single-shot mode: one conversion request only, no polling retry.
+    if (cacheResult.cacheStatus !== 2) {
+      throw new Error(`Conversion not ready after first request (cacheStatus=${cacheResult.cacheStatus ?? "unknown"})`);
+    }
 
-    const viewerBase = this.resolveBaseUrl();
+    // 3) build viewer url
+    const query = new URLSearchParams({ fileList: JSON.stringify([cacheListItem]) }).toString();
+    const viewerBase = this.resolveViewerOrigin();
     const viewerPath = this.resolveViewerPath();
     const url = `${viewerBase}${viewerPath}?${query}`;
 
     return { baseFileId, baseMajorRev, baseMinorRev, fileName, query, url };
+
   }
 
+  // Update internal loading state and emit state event.
   private updateState(next: Partial<LoadStatePayload>) {
     const elapsedMs = this.operationStartTime > 0 ? Date.now() - this.operationStartTime : 0;
     this.state = { ...this.state, ...next, elapsedMs };
     this.viewer._emit("files:state", this.state);
   }
 
+  // Shared wrapper to handle loading state lifecycle and top-level errors.
   private async withOperation<T>(
     initial: { stage: LoadStage; message?: string },
     run: () => Promise<T>,
@@ -399,8 +395,6 @@ export class FilesModule {
       isLoading: true,
       stage: initial.stage,
       message: initial.message,
-      attempt: undefined,
-      maxAttempts: undefined,
     });
 
     try {
@@ -415,6 +409,7 @@ export class FilesModule {
     }
   }
 
+  // Normalize unknown error shape into displayable message.
   private toErrorMessage(e: unknown): string {
     return e instanceof Error ? e.message : String(e);
   }

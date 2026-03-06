@@ -6,18 +6,27 @@
     <title>HC Viewer Test</title>
     <style>
       body { font-family: Arial, sans-serif; margin: 12px; }
-      #toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-      #app { width: 100%; height: 80vh; border: 1px solid #ddd; }
+      #toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+      #status { margin-bottom: 12px; padding: 8px; border: 1px solid #ddd; background: #fafafa; }
+      #statusText { margin: 0; font-size: 14px; }
+      #app { width: 100%; height: 70vh; border: 1px solid #ddd; }
     </style>
   </head>
   <body>
     <div id="toolbar">
+      <input id="fileInput" type="file" />
+      <button id="uploadBtn">Upload</button>
+      <button id="convertBtn">Convert</button>
+      <button id="openBtn">Open Viewer</button>
       <button id="zoomInBtn">Zoom In</button>
       <button id="zoomOutBtn">Zoom Out</button>
       <button id="homeBtn">Home</button>
       <button id="panOnBtn">Pan On</button>
       <button id="panOffBtn">Pan Off</button>
-      
+    </div>
+
+    <div id="status">
+      <p id="statusText">Idle</p>
     </div>
 
     <div id="app"></div>

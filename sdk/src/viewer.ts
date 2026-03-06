@@ -1,23 +1,24 @@
 // sdk/src/viewer.ts
+import { Emitter } from "./core/emitter";
+import type { SdkEventKey, SdkEventMap, SdkEventPayload } from "./contracts/events";
+
 import { CameraModule } from "./modules/camera.module";
 import { InteractionModule } from "./modules/interaction.module";
 import { NodeModule } from "./modules/node.module";
 import { FilesModule } from "./modules/files.module";
-import { Emitter } from "./core/emitter";
-import type { SdkEventMap, SdkEventKey, SdkEventPayload } from "./contracts/events";
 
+import {
+  ViewerMessageType,
+  type IncomingMessage,
+  type OutgoingMessage,
+} from "./contracts/messages"; 
 export type HcViewerOptions = {
   container: HTMLElement | string;
-
-  // NEW: url optional (pipeline sẽ set sau)
   url?: string;
-
-  // NEW: pipeline options (ported from old)
   baseUrl?: string;
   viewerPath?: string;
   uploadPath?: string;
   file?: File;
-  polling?: { maxAttempts?: number; intervalMs?: number };
   notify?: boolean | { success?: boolean; error?: boolean };
 
   width?: string;
@@ -27,30 +28,26 @@ export type HcViewerOptions = {
 };
 
 export class HcViewer {
-  private container: HTMLElement | null = null;
-  private iframe: HTMLIFrameElement | null = null;
+  private containerEl: HTMLElement | null = null;
+  private iframeEl: HTMLIFrameElement | null = null;
   private initialized = false;
 
-  // change typed emitter map
-  private events = new Emitter<SdkEventMap>();
+  private emitter = new Emitter<SdkEventMap>();
 
   // modules
   public camera: CameraModule;
   public interaction: InteractionModule;
   public node: NodeModule;
-
-  // NEW
   public files: FilesModule;
 
   constructor(private options: HcViewerOptions) {
     this.camera = new CameraModule(this);
     this.interaction = new InteractionModule(this);
     this.node = new NodeModule(this);
-
     this.files = new FilesModule(this);
   }
 
-  // NEW helpers for FilesModule
+  // ===== options helpers =====
   getOptions(): HcViewerOptions {
     return this.options;
   }
@@ -60,112 +57,112 @@ export class HcViewer {
   }
 
   getUrl(): string | null {
-    return this.options.url || null;
+    return this.options.url ?? null;
   }
 
-  open(url: string) {
-    this.ensureInit();
-    this.options.url = url;
-
-    if (!this.iframe) {
-      this.render();
-      return;
-    }
-    this.iframe.src = url;
-  }
-
-  init() {
+  // ===== lifecycle =====
+  init(): void {
     if (this.initialized) return;
-    this.container =
+
+    this.containerEl =
       typeof this.options.container === "string"
         ? (document.querySelector(this.options.container) as HTMLElement | null)
         : this.options.container;
 
-    if (!this.container) throw new Error("Container element not found");
+    if (!this.containerEl) throw new Error("Container element not found");
+
     window.addEventListener("message", this.handleMessage);
     this.initialized = true;
   }
 
-  private ensureInit() {
+  render(): void {
+    this.ensureInit();
+    if (this.iframeEl) return;
+    // url chưa có: cho phép init trước, files.render() sẽ open(url) sau
+    if (!this.options.url) return;
+    const iframe = document.createElement("iframe");
+    iframe.src = this.options.url;
+    iframe.style.border = "none";
+    iframe.style.width = this.options.width || "100%";
+    iframe.style.height = this.options.height || "100%";
+    iframe.width = this.options.width || "100%";
+    iframe.height = this.options.height || "100%";
+    if (this.options.sandbox) iframe.setAttribute("sandbox", this.options.sandbox);
+    this.containerEl!.appendChild(iframe);
+    this.iframeEl = iframe;
+  }
+
+  open(url: string): void {
+    this.ensureInit();
+    this.options.url = url;
+    if (!this.iframeEl) {
+      this.render();
+      return;
+    }
+    this.iframeEl.src = url;
+  }
+
+  destroy(): void {
+    // remove listener (phải cùng reference -> dùng arrow fn handleMessage)
+    window.removeEventListener("message", this.handleMessage);
+
+    // remove iframe
+    if (this.iframeEl && this.containerEl) {
+      try {
+        this.containerEl.removeChild(this.iframeEl);
+      } catch {
+        // ignore
+      }
+    }
+
+    this.iframeEl = null;
+    this.containerEl = null;
+    this.initialized = false;
+  }
+
+  private ensureInit(): void {
     if (!this.initialized) throw new Error("Call viewer.init() before using viewer");
   }
 
-  render() {
-    this.ensureInit();
-    if (this.iframe) return;
-
-    if (!this.options.url) {
-      // không auto throw để bạn có thể init trước rồi files.render() sau
-      // nhưng nếu bạn muốn strict: throw new Error("Missing url. Use viewer.open(url) or files.render(file).");
-      return;
-    }
-
-    const iframe = document.createElement("iframe");
-    iframe.src = this.options.url;
-    iframe.width = this.options.width || "100%";
-    iframe.height = this.options.height || "100%";
-    iframe.style.width = this.options.width || "100%";
-    iframe.style.height = this.options.height || "100%";
-    iframe.style.border = "none";
-    if (this.options.sandbox) iframe.setAttribute("sandbox", this.options.sandbox);
-
-    this.container!.appendChild(iframe);
-    this.iframe = iframe;
+  // ===== typed internal events (modules dùng) =====
+  _on<K extends SdkEventKey>(event: K, cb: (payload: SdkEventPayload<K>) => void): () => void {
+    return this.emitter.on(event, cb);
   }
 
-  // typed internal event api (update generic)
-  _on<K extends SdkEventKey>(event: K, cb: (payload: SdkEventPayload<K>) => void) {
-    return this.events.on(event, cb);
-  }
-  _off<K extends SdkEventKey>(event: K, cb: (payload: SdkEventPayload<K>) => void) {
-    this.events.off(event, cb);
-  }
-  _emit<K extends SdkEventKey>(event: K, payload: SdkEventPayload<K>) {
-    this.events.emit(event, payload);
+  _off<K extends SdkEventKey>(event: K, cb: (payload: SdkEventPayload<K>) => void): void {
+    this.emitter.off(event, cb);
   }
 
-  // =========================
-  // INTERNAL MESSAGE API
-  // =========================
-  postToViewer(type: ViewerMessageType, payload: any) {
-    const w = this.iframe?.contentWindow;
-    if (!w) return;
-
-    const msg: OutgoingMessage = { source: "HC_SDK", type, payload };
-    w.postMessage(msg, this.options.allowedOrigin || "*");
+  _emit<K extends SdkEventKey>(event: K, payload: SdkEventPayload<K>): void {
+    this.emitter.emit(event, payload);
   }
 
-  // =========================
-  // MESSAGE HANDLER
-  // =========================
+  // ===== postMessage bridge =====
+  postToViewer<TPayload = unknown>(type: ViewerMessageType, payload?: TPayload): void {
+    if (!this.iframeEl?.contentWindow) return;
+
+    const message: OutgoingMessage<TPayload> = { type, payload };
+    const targetOrigin = this.options.allowedOrigin || "*";
+    this.iframeEl.contentWindow.postMessage(message, targetOrigin);
+  }
   private handleMessage = (event: MessageEvent) => {
-    const iframeWindow = this.iframe?.contentWindow;
-    if (!iframeWindow) return;
-
-    // chỉ nhận message từ đúng iframe
-    if (event.source !== iframeWindow) return;
-
-    const data = event.data as IncomingMessage;
-    if (!data || data.source !== "HC_VIEWER") return;
-
-    // nếu user set allowedOrigin thì validate
-    if (this.options.allowedOrigin && event.origin !== this.options.allowedOrigin) return;
+    const data = event.data as IncomingMessage | undefined;
+    if (!data || typeof data !== "object") return;
 
     switch (data.type) {
       case ViewerMessageType.HOME_CLICK:
-        this._emit("camera:home", data.payload);
+        this._emit("camera:home", { timestamp: Date.now() });
         break;
 
       case ViewerMessageType.NODE_SELECT:
-        this._emit("node:select", data.payload);
+        this._emit("node:select", { nodeId: String((data as any).payload?.nodeId ?? ""), timestamp: Date.now() });
         break;
 
       case ViewerMessageType.PAN_CHANGE:
-        this._emit("interaction:pan-change", data.payload);
+        this._emit("interaction:pan-change", { enabled: Boolean((data as any).payload?.enabled) });
         break;
 
       default:
-        // ignore unknown
         break;
     }
   };

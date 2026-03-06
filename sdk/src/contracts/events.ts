@@ -18,8 +18,6 @@ export type LoadStatePayload = {
   isLoading: boolean;
   stage: LoadStage;
   message?: string;
-  attempt?: number;
-  maxAttempts?: number;
   elapsedMs?: number;
 };
 
@@ -40,7 +38,6 @@ export type FilesEventMap = {
   "files:upload:error": { fileName: string; error: string };
 
   "files:conversion:start": { fileName: string };
-  "files:conversion:progress": { attempt: number; maxAttempts: number; cacheStatus?: number };
   "files:conversion:success": PreparedViewerData;
   "files:conversion:error": { fileName: string; error: string };
 

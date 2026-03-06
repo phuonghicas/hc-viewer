@@ -1,5 +1,5 @@
-import { ViewerMessageType, HcViewer } from "../viewer";
-
+import {  HcViewer } from "../viewer";
+import { ViewerMessageType } from "../contracts/messages";
 export class CameraModule {
   public on: {
     home: (cb: (payload: { timestamp: number }) => void) => () => void;
