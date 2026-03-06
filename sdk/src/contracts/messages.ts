@@ -9,12 +9,19 @@ export enum ViewerMessageType {
   PAN_CHANGE = "viewer-pan-change",
 }
 
+export enum ViewerMessageSource {
+  SDK = "HC_SDK",
+  VIEWER = "HC_VIEWER",
+}
+
 export type OutgoingMessage<T = unknown> = {
+  source: ViewerMessageSource.SDK;
   type: ViewerMessageType;
   payload?: T;
 };
 
 export type IncomingMessage<T = any> = {
+  source?: ViewerMessageSource | string;
   type: ViewerMessageType;
   payload?: T;
 };

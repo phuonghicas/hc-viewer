@@ -394,10 +394,10 @@ var HcViewer = class {
     window.addEventListener("message", this.handleMessage);
     this.initialized = true;
   }
-  render() {
+  async render(file) {
     this.ensureInit();
     if (this.iframeEl) return;
-    if (!this.options.url) return;
+    if (!this.options.url) return this.files.render(file);
     const iframe = document.createElement("iframe");
     iframe.src = this.options.url;
     iframe.style.border = "none";
@@ -447,7 +447,7 @@ var HcViewer = class {
   postToViewer(type, payload) {
     var _a;
     if (!((_a = this.iframeEl) == null ? void 0 : _a.contentWindow)) return;
-    const message = { type, payload };
+    const message = { source: "HC_SDK", type, payload };
     const targetOrigin = this.options.allowedOrigin || "*";
     this.iframeEl.contentWindow.postMessage(message, targetOrigin);
   }

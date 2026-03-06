@@ -19,6 +19,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const viewer = new HcViewer({
     container: "#app",
     baseUrl: "https://dev.3dviewer.anybim.vn",
+    url: 'http://localhost:3000/mainviewer?fileList=%5B%7B%22baseFileId%22%3A%22543efee5-c7e8-4697-ac71-92bfca518a4c%22%2C%22baseMajorRev%22%3A0%2C%22baseMinorRev%22%3A0%2C%22fileName%22%3A%22DataCenter_Example.rvt%22%7D%5D',
     allowedOrigin: "http://localhost:3000",
   });
 
@@ -31,11 +32,12 @@ window.addEventListener("DOMContentLoaded", () => {
   const refreshButtons = (busy = false) => {
     const hasFile = Boolean(selectedFile);
     const hasPrepared = Boolean(preparedData);
+    const hasDirectUrl = Boolean(viewer.getUrl());
 
     if (fileInput) fileInput.disabled = busy;
     if (uploadBtn) uploadBtn.disabled = busy || !hasFile;
     if (convertBtn) convertBtn.disabled = busy || !hasFile;
-    if (openBtn) openBtn.disabled = busy || !hasPrepared;
+    if (openBtn) openBtn.disabled = busy || (!hasPrepared && !hasDirectUrl);
   };
 
   const getSelectedFile = () => {
@@ -85,6 +87,12 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   openBtn?.addEventListener("click", () => {
+    const directUrl = viewer.getUrl();
+    if (directUrl) {
+      viewer.open(directUrl);
+      return;
+    }
+
     if (!preparedData) {
       alert("No converted file yet. Please convert first.");
       return;
@@ -93,13 +101,10 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   viewer.files.on.state((state) => {
-    const progress = state.attempt && state.maxAttempts
-      ? ` (${state.attempt}/${state.maxAttempts})`
-      : "";
     const elapsed = typeof state.elapsedMs === "number"
       ? ` - ${Math.round(state.elapsedMs / 1000)}s`
       : "";
-    setStatus(`${state.stage}: ${state.message || ""}${progress}${elapsed}`.trim());
+    setStatus(`${state.stage}: ${state.message || ""}${elapsed}`.trim());
     refreshButtons(Boolean(state.isLoading));
   });
 

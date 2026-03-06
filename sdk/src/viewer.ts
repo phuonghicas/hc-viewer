@@ -1,6 +1,6 @@
 // sdk/src/viewer.ts
 import { Emitter } from "./core/emitter";
-import type { SdkEventKey, SdkEventMap, SdkEventPayload } from "./contracts/events";
+import type { PreparedViewerData, SdkEventKey, SdkEventMap, SdkEventPayload } from "./contracts/events";
 
 import { CameraModule } from "./modules/camera.module";
 import { InteractionModule } from "./modules/interaction.module";
@@ -9,6 +9,7 @@ import { FilesModule } from "./modules/files.module";
 
 import {
   ViewerMessageType,
+  ViewerMessageSource,
   type IncomingMessage,
   type OutgoingMessage,
 } from "./contracts/messages"; 
@@ -75,11 +76,11 @@ export class HcViewer {
     this.initialized = true;
   }
 
-  render(): void {
+  async render(file?: File): Promise<PreparedViewerData | void> {
     this.ensureInit();
     if (this.iframeEl) return;
-    // url chưa có: cho phép init trước, files.render() sẽ open(url) sau
-    if (!this.options.url) return;
+    // If URL is missing, render falls back to files pipeline.
+    if (!this.options.url) return this.files.render(file);
     const iframe = document.createElement("iframe");
     iframe.src = this.options.url;
     iframe.style.border = "none";
@@ -141,7 +142,11 @@ export class HcViewer {
   postToViewer<TPayload = unknown>(type: ViewerMessageType, payload?: TPayload): void {
     if (!this.iframeEl?.contentWindow) return;
 
-    const message: OutgoingMessage<TPayload> = { type, payload };
+    const message: OutgoingMessage<TPayload> = {
+      source: ViewerMessageSource.SDK,
+      type,
+      payload,
+    };
     const targetOrigin = this.options.allowedOrigin || "*";
     this.iframeEl.contentWindow.postMessage(message, targetOrigin);
   }
@@ -167,3 +172,5 @@ export class HcViewer {
     }
   };
 }
+
+

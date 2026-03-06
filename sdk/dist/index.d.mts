@@ -225,7 +225,7 @@ declare class HcViewer {
     patchOptions(next: Partial<HcViewerOptions>): void;
     getUrl(): string | null;
     init(): void;
-    render(): void;
+    render(file?: File): Promise<PreparedViewerData | void>;
     open(url: string): void;
     destroy(): void;
     private ensureInit;
