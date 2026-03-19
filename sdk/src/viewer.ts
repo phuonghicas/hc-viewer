@@ -7,10 +7,13 @@ import { InteractionModule } from "./modules/interaction.module";
 import { NodeModule } from "./modules/node.module";
 import { FilesModule } from "./modules/files.module";
 import { ToolbarModule } from "./modules/toolbar.module";
+import { ModelTreeModule } from "./modules/model-tree.module";
 
 import {
   ViewerMessageType,
   ViewerMessageSource,
+  type SheetsListPayload,
+  type TreeNodeIdsPayload,
   type IncomingMessage,
   type OutgoingMessage,
 } from "./contracts/messages"; 
@@ -42,6 +45,7 @@ export class Viewer3D {
   public node: NodeModule;
   public files: FilesModule;
   public toolbar: ToolbarModule;
+  public modelTree: ModelTreeModule;
 
   constructor(private options: Viewer3DOptions) {
     this.camera = new CameraModule(this);
@@ -49,6 +53,7 @@ export class Viewer3D {
     this.node = new NodeModule(this);
     this.files = new FilesModule(this);
     this.toolbar = new ToolbarModule(this);
+    this.modelTree = new ModelTreeModule(this);
   }
 
   // ===== options helpers =====
@@ -169,6 +174,34 @@ export class Viewer3D {
       case ViewerMessageType.PAN_CHANGE:
         this._emit("interaction:pan-change", { enabled: Boolean((data as any).payload?.enabled) });
         break;
+
+      case ViewerMessageType.TREE_NODE_IDS: {
+        const payload = (data as IncomingMessage<TreeNodeIdsPayload>).payload;
+        if (!payload || !payload.requestId || !Array.isArray(payload.nodeIds)) break;
+        this._emit("modelTree:node-ids", {
+          requestId: String(payload.requestId),
+          nodeIds: payload.nodeIds.map(String),
+          timestamp: Number(payload.timestamp) || Date.now(),
+        });
+        break;
+      }
+
+      case ViewerMessageType.SHEETS_LIST: {
+        const payload = (data as IncomingMessage<SheetsListPayload>).payload;
+        if (!payload || !payload.requestId || !Array.isArray(payload.sheets)) break;
+        this._emit("sheets:list", {
+          requestId: String(payload.requestId),
+          sheets: payload.sheets.map((sheet) => ({
+            id: sheet.id,
+            name: String(sheet.name ?? ""),
+            is3D: Boolean(sheet.is3D),
+            viewId: sheet.viewId ? String(sheet.viewId) : undefined,
+          })),
+          activeSheetId: payload.activeSheetId ?? null,
+          timestamp: Number(payload.timestamp) || Date.now(),
+        });
+        break;
+      }
 
       default:
         break;

@@ -9,6 +9,22 @@ type ViewerEventMap = {
     "interaction:pan-change": {
         enabled: boolean;
     };
+    "modelTree:node-ids": {
+        requestId: string;
+        nodeIds: string[];
+        timestamp: number;
+    };
+    "sheets:list": {
+        requestId: string;
+        sheets: {
+            id: string | number;
+            name: string;
+            is3D?: boolean;
+            viewId?: string;
+        }[];
+        activeSheetId?: string | number | null;
+        timestamp: number;
+    };
 };
 type LoadStage = "idle" | "uploading" | "converting" | "rendering" | "completed" | "error";
 type LoadStatePayload = {
@@ -201,20 +217,6 @@ declare class FilesModule {
     private toErrorMessage;
 }
 
-declare class ToolbarModule {
-    private viewer;
-    constructor(viewer: Viewer3D);
-    setDisabled3D(operators: string[]): void;
-    setDisabledPdf(operators: string[]): void;
-    clearDisabled3D(): void;
-    clearDisabledPdf(): void;
-    disableAll3D(): void;
-    disableAllPdf(): void;
-    enableAll3D(): void;
-    enableAllPdf(): void;
-    private postConfig;
-}
-
 declare enum ViewerMessageType {
     ZOOM = "viewer-zoom",
     DRAW_MODE = "viewer-draw-mode",
@@ -229,9 +231,90 @@ declare enum ViewerMessageType {
     ZOOM_WINDOW = "viewer-zoom-window",
     ZOOM_FIT = "viewer-zoom-fit",
     TOOLBAR_CONFIG = "viewer-toolbar-config",
+    PANEL_OPEN = "viewer-panel-open",
+    PANEL_CLOSE = "viewer-panel-close",
+    CUTTING_PLANE_ACTION = "viewer-cutting-plane-action",
+    SHEETS_GET_LIST = "viewer-sheets-get-list",
+    SHEETS_LIST = "viewer-sheets-list",
+    SHEETS_APPLY = "viewer-sheets-apply",
+    TREE_SELECT_NODE = "viewer-tree-select-node",
+    TREE_GET_NODE_IDS = "viewer-tree-get-node-ids",
+    TREE_NODE_IDS = "viewer-tree-node-ids",
     HOME_CLICK = "viewer-home-click",
     NODE_SELECT = "viewer-node-select",
     PAN_CHANGE = "viewer-pan-change"
+}
+type SheetListItem = {
+    id: string | number;
+    name: string;
+    is3D?: boolean;
+    viewId?: string;
+};
+
+type GetSheetsOptions = {
+    timeoutMs?: number;
+};
+declare class ToolbarModule {
+    private viewer;
+    constructor(viewer: Viewer3D);
+    setDisabled3D(operators: string[]): void;
+    setDisabledPdf(operators: string[]): void;
+    clearDisabled3D(): void;
+    clearDisabledPdf(): void;
+    disableAll3D(): void;
+    disableAllPdf(): void;
+    enableAll3D(): void;
+    enableAllPdf(): void;
+    openClippingPlanes(): void;
+    closeClippingPlanes(): void;
+    openSetting(): void;
+    closeSetting(): void;
+    openSetting3D(): void;
+    closeSetting3D(): void;
+    openSettingPdf(): void;
+    closeSettingPdf(): void;
+    openStatesObjects(): void;
+    closeStatesObjects(): void;
+    openLinkedObjects(): void;
+    closeLinkedObjects(): void;
+    openModelTree(): void;
+    closeModelTree(): void;
+    openObjectProperties(): void;
+    closeObjectProperties(): void;
+    openSheets(): void;
+    closeSheets(): void;
+    getSheets(options?: GetSheetsOptions): Promise<SheetListItem[]>;
+    applySheet(sheetId: string | number): void;
+    cuttingCloseSections(): void;
+    cuttingMultipleSides(): void;
+    cuttingToggleSelection(): void;
+    cuttingTogglePlanes(): void;
+    cuttingPlaneX(): void;
+    cuttingPlaneY(): void;
+    cuttingPlaneZ(): void;
+    cuttingPlaneBox(): void;
+    cuttingRotateBox(): void;
+    cuttingReversePlaneX(): void;
+    cuttingReversePlaneY(): void;
+    cuttingReversePlaneZ(): void;
+    private postConfig;
+    private postPanelOpen;
+    private postPanelClose;
+    private postCuttingAction;
+    private postSheetsGetList;
+    private postSheetsApply;
+}
+
+type GetNodeIdsOptions = {
+    onlyRealNodes?: boolean;
+    timeoutMs?: number;
+};
+declare class ModelTreeModule {
+    private viewer;
+    constructor(viewer: Viewer3D);
+    open(): void;
+    selectNode(nodeId: string | number): void;
+    getNodeIds(options?: GetNodeIdsOptions): Promise<string[]>;
 }
 
 type Viewer3DOptions = {
@@ -261,6 +344,7 @@ declare class Viewer3D {
     node: NodeModule;
     files: FilesModule;
     toolbar: ToolbarModule;
+    modelTree: ModelTreeModule;
     constructor(options: Viewer3DOptions);
     getOptions(): Viewer3DOptions;
     patchOptions(next: Partial<Viewer3DOptions>): void;

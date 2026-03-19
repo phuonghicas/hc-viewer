@@ -76,6 +76,13 @@ cd sdk
 npm run build
 ```
 
+Recommended safety check before publish:
+
+```bash
+cd sdk
+npx tsc --noEmit
+```
+
 Expected artifacts:
 
 - `dist/index.js`
@@ -94,6 +101,15 @@ Check that:
 
 - Only required release files are included (mainly `dist`)
 - No junk files are included (`node_modules`, temp files, local configs)
+
+Optional smoke test from packed tarball:
+
+```bash
+cd sdk
+npm pack
+# then install the generated .tgz in a sample app to verify runtime import
+# example: npm install ../sdk/3dviewer-sdk-<version>.tgz
+```
 
 ### 6) Authenticate npm and verify account
 

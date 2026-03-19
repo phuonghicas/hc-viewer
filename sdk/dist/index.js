@@ -30,8 +30,10 @@ var Emitter = class {
     this.listeners = {};
   }
   on(event, cb) {
-    var _a;
-    const arr = (_a = this.listeners)[event] || (_a[event] = []);
+    if (!this.listeners[event]) {
+      this.listeners[event] = [];
+    }
+    const arr = this.listeners[event];
     arr.push(cb);
     return () => this.off(event, cb);
   }
@@ -444,6 +446,9 @@ var FilesModule = class {
 };
 
 // src/modules/toolbar.module.ts
+function createRequestId() {
+  return `sheets_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
 var ALL_3D_TOOLBAR_OPERATORS = [
   "home",
   "select",
@@ -519,8 +524,176 @@ var ToolbarModule = class {
   enableAllPdf() {
     this.clearDisabledPdf();
   }
+  openClippingPlanes() {
+    this.postPanelOpen({ panel: "clipping-commands", format: "3d" });
+  }
+  closeClippingPlanes() {
+    this.postPanelClose({ panel: "clipping-commands", format: "3d" });
+  }
+  openSetting() {
+    this.postPanelOpen({ panel: "setting" });
+  }
+  closeSetting() {
+    this.postPanelClose({ panel: "setting" });
+  }
+  openSetting3D() {
+    this.postPanelOpen({ panel: "setting", format: "3d" });
+  }
+  closeSetting3D() {
+    this.postPanelClose({ panel: "setting", format: "3d" });
+  }
+  openSettingPdf() {
+    this.postPanelOpen({ panel: "setting", format: "pdf" });
+  }
+  closeSettingPdf() {
+    this.postPanelClose({ panel: "setting", format: "pdf" });
+  }
+  openStatesObjects() {
+    this.postPanelOpen({ panel: "statesObjects", format: "3d" });
+  }
+  closeStatesObjects() {
+    this.postPanelClose({ panel: "statesObjects", format: "3d" });
+  }
+  openLinkedObjects() {
+    this.postPanelOpen({ panel: "linkedObjects", format: "3d" });
+  }
+  closeLinkedObjects() {
+    this.postPanelClose({ panel: "linkedObjects", format: "3d" });
+  }
+  openModelTree() {
+    this.postPanelOpen({ panel: "model-tree", format: "3d" });
+  }
+  closeModelTree() {
+    this.postPanelClose({ panel: "model-tree", format: "3d" });
+  }
+  openObjectProperties() {
+    this.postPanelOpen({ panel: "object-properties", format: "3d" });
+  }
+  closeObjectProperties() {
+    this.postPanelClose({ panel: "object-properties", format: "3d" });
+  }
+  openSheets() {
+    this.postPanelOpen({ panel: "sheets", format: "3d" });
+  }
+  closeSheets() {
+    this.postPanelClose({ panel: "sheets", format: "3d" });
+  }
+  getSheets(options) {
+    var _a;
+    const requestId = createRequestId();
+    const timeoutMs = Math.max(1e3, (_a = options == null ? void 0 : options.timeoutMs) != null ? _a : 1e4);
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        off();
+        reject(new Error("Timeout while getting sheets list from viewer"));
+      }, timeoutMs);
+      const off = this.viewer._on("sheets:list", (payload) => {
+        if (payload.requestId !== requestId) return;
+        clearTimeout(timer);
+        off();
+        resolve(payload.sheets);
+      });
+      this.postSheetsGetList({ requestId });
+    });
+  }
+  applySheet(sheetId) {
+    this.postSheetsApply({ sheetId });
+  }
+  cuttingCloseSections() {
+    this.postCuttingAction({ action: "close" });
+  }
+  cuttingMultipleSides() {
+    this.postCuttingAction({ action: "multi" });
+  }
+  cuttingToggleSelection() {
+    this.postCuttingAction({ action: "toggle-section" });
+  }
+  cuttingTogglePlanes() {
+    this.postCuttingAction({ action: "toggle-plane" });
+  }
+  cuttingPlaneX() {
+    this.postCuttingAction({ action: "plane-x" });
+  }
+  cuttingPlaneY() {
+    this.postCuttingAction({ action: "plane-y" });
+  }
+  cuttingPlaneZ() {
+    this.postCuttingAction({ action: "plane-z" });
+  }
+  cuttingPlaneBox() {
+    this.postCuttingAction({ action: "plane-box" });
+  }
+  cuttingRotateBox() {
+    this.postCuttingAction({ action: "rotate-box" });
+  }
+  cuttingReversePlaneX() {
+    this.postCuttingAction({ action: "reverse-plane-x" });
+  }
+  cuttingReversePlaneY() {
+    this.postCuttingAction({ action: "reverse-plane-y" });
+  }
+  cuttingReversePlaneZ() {
+    this.postCuttingAction({ action: "reverse-plane-z" });
+  }
   postConfig(payload) {
     this.viewer.postToViewer("viewer-toolbar-config" /* TOOLBAR_CONFIG */, payload);
+  }
+  postPanelOpen(payload) {
+    this.viewer.postToViewer("viewer-panel-open" /* PANEL_OPEN */, payload);
+  }
+  postPanelClose(payload) {
+    this.viewer.postToViewer("viewer-panel-close" /* PANEL_CLOSE */, payload);
+  }
+  postCuttingAction(payload) {
+    this.viewer.postToViewer("viewer-cutting-plane-action" /* CUTTING_PLANE_ACTION */, payload);
+  }
+  postSheetsGetList(payload) {
+    this.viewer.postToViewer("viewer-sheets-get-list" /* SHEETS_GET_LIST */, payload);
+  }
+  postSheetsApply(payload) {
+    this.viewer.postToViewer("viewer-sheets-apply" /* SHEETS_APPLY */, payload);
+  }
+};
+
+// src/modules/model-tree.module.ts
+function createRequestId2() {
+  return `tree_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+var ModelTreeModule = class {
+  constructor(viewer) {
+    this.viewer = viewer;
+  }
+  open() {
+    this.viewer.postToViewer("viewer-panel-open" /* PANEL_OPEN */, {
+      panel: "model-tree",
+      format: "3d"
+    });
+  }
+  selectNode(nodeId) {
+    this.viewer.postToViewer("viewer-tree-select-node" /* TREE_SELECT_NODE */, {
+      nodeId: String(nodeId)
+    });
+  }
+  getNodeIds(options) {
+    var _a;
+    const requestId = createRequestId2();
+    const timeoutMs = Math.max(1e3, (_a = options == null ? void 0 : options.timeoutMs) != null ? _a : 1e4);
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        off();
+        reject(new Error("Timeout while getting node ids from viewer"));
+      }, timeoutMs);
+      const off = this.viewer._on("modelTree:node-ids", (payload) => {
+        if (payload.requestId !== requestId) return;
+        clearTimeout(timer);
+        off();
+        resolve(payload.nodeIds);
+      });
+      this.viewer.postToViewer("viewer-tree-get-node-ids" /* TREE_GET_NODE_IDS */, {
+        requestId,
+        onlyRealNodes: (options == null ? void 0 : options.onlyRealNodes) !== false
+      });
+    });
   }
 };
 
@@ -533,7 +706,7 @@ var Viewer3D = class {
     this.initialized = false;
     this.emitter = new Emitter();
     this.handleMessage = (event) => {
-      var _a, _b, _c;
+      var _a, _b, _c, _d;
       const data = event.data;
       if (!data || typeof data !== "object") return;
       switch (data.type) {
@@ -546,6 +719,35 @@ var Viewer3D = class {
         case "viewer-pan-change" /* PAN_CHANGE */:
           this._emit("interaction:pan-change", { enabled: Boolean((_c = data.payload) == null ? void 0 : _c.enabled) });
           break;
+        case "viewer-tree-node-ids" /* TREE_NODE_IDS */: {
+          const payload = data.payload;
+          if (!payload || !payload.requestId || !Array.isArray(payload.nodeIds)) break;
+          this._emit("modelTree:node-ids", {
+            requestId: String(payload.requestId),
+            nodeIds: payload.nodeIds.map(String),
+            timestamp: Number(payload.timestamp) || Date.now()
+          });
+          break;
+        }
+        case "viewer-sheets-list" /* SHEETS_LIST */: {
+          const payload = data.payload;
+          if (!payload || !payload.requestId || !Array.isArray(payload.sheets)) break;
+          this._emit("sheets:list", {
+            requestId: String(payload.requestId),
+            sheets: payload.sheets.map((sheet) => {
+              var _a2;
+              return {
+                id: sheet.id,
+                name: String((_a2 = sheet.name) != null ? _a2 : ""),
+                is3D: Boolean(sheet.is3D),
+                viewId: sheet.viewId ? String(sheet.viewId) : void 0
+              };
+            }),
+            activeSheetId: (_d = payload.activeSheetId) != null ? _d : null,
+            timestamp: Number(payload.timestamp) || Date.now()
+          });
+          break;
+        }
         default:
           break;
       }
@@ -555,6 +757,7 @@ var Viewer3D = class {
     this.node = new NodeModule(this);
     this.files = new FilesModule(this);
     this.toolbar = new ToolbarModule(this);
+    this.modelTree = new ModelTreeModule(this);
   }
   // ===== options helpers =====
   getOptions() {

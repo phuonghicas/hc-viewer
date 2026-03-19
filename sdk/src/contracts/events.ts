@@ -3,6 +3,8 @@ export type ViewerEventMap = {
   "camera:home": { timestamp: number };
   "node:select": { nodeId: string; timestamp: number };
   "interaction:pan-change": { enabled: boolean };
+  "modelTree:node-ids": { requestId: string; nodeIds: string[]; timestamp: number };
+  "sheets:list": { requestId: string; sheets: { id: string | number; name: string; is3D?: boolean; viewId?: string }[]; activeSheetId?: string | number | null; timestamp: number };
 };
 
 // 2) Files pipeline (new)

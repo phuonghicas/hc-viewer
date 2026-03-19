@@ -5,54 +5,384 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>3D Viewer Test</title>
     <style>
-      body { font-family: Arial, sans-serif; margin: 12px; }
-      #toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
-      #status { margin-bottom: 12px; padding: 8px; border: 1px solid #ddd; background: #fafafa; }
-      #statusText { margin: 0; font-size: 14px; }
-      #app { width: 100%; height: 70vh; border: 1px solid #ddd; }
+      :root {
+        --bg: #f4f6fb;
+        --card: #ffffff;
+        --line: #d7deee;
+        --text: #132038;
+        --muted: #5b6881;
+        --primary: #2e63ff;
+        --primary-2: #2150d6;
+        --sidebar-open: 25%;
+        --sidebar-closed: 56px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, sans-serif;
+        background: radial-gradient(circle at 0 0, #f8fbff, var(--bg) 45%);
+        color: var(--text);
+      }
+
+      #layout {
+        display: flex;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      #sidebar {
+        width: var(--sidebar-open);
+        min-width: var(--sidebar-open);
+        max-width: var(--sidebar-open);
+        height: 100%;
+        background: linear-gradient(170deg, #fefeff 0%, #eef3ff 100%);
+        border-right: 1px solid var(--line);
+        box-shadow: 4px 0 20px rgba(21, 44, 96, 0.08);
+        transition: width 260ms ease, min-width 260ms ease, max-width 260ms ease;
+        display: flex;
+        flex-direction: column;
+      }
+
+      #layout.sidebar-collapsed #sidebar {
+        width: var(--sidebar-closed);
+        min-width: var(--sidebar-closed);
+        max-width: var(--sidebar-closed);
+      }
+
+      .sidebar-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 12px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .sidebar-title {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+        white-space: nowrap;
+      }
+
+      #layout.sidebar-collapsed .sidebar-title {
+        opacity: 0;
+        pointer-events: none;
+        width: 0;
+        overflow: hidden;
+      }
+
+      #toggleSidebarBtn {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--muted);
+        cursor: pointer;
+        transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+      }
+
+      #toggleSidebarBtn:hover {
+        background: #edf2ff;
+        color: var(--primary);
+        border-color: #bfd0ff;
+      }
+
+      .sidebar-content {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      #layout.sidebar-collapsed .sidebar-content {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px;
+      }
+
+      .card h4 {
+        margin: 0 0 10px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--muted);
+      }
+
+      .stack {
+        display: grid;
+        gap: 8px;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      input[type="file"],
+      input[type="text"],
+      button {
+        width: 100%;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        padding: 8px 10px;
+        font-size: 13px;
+      }
+
+      input[type="file"],
+      input[type="text"] {
+        background: #fff;
+        color: var(--text);
+      }
+
+      button {
+        background: #fff;
+        color: var(--text);
+        cursor: pointer;
+        transition: transform 120ms ease, background 160ms ease, border-color 160ms ease;
+      }
+
+      button:hover {
+        background: #edf2ff;
+        border-color: #c3d4ff;
+        transform: translateY(-1px);
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
+
+      button.primary {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #fff;
+      }
+
+      button.primary:hover {
+        background: var(--primary-2);
+        border-color: var(--primary-2);
+      }
+
+      .status-box {
+        margin-top: 8px;
+        font-size: 12px;
+        color: var(--muted);
+        background: #f7f9ff;
+        border: 1px dashed #c9d5f7;
+        border-radius: 8px;
+        padding: 8px;
+        min-height: 34px;
+      }
+
+      #viewer-pane {
+        flex: 1;
+        min-width: 0;
+        height: 100%;
+        padding: 10px;
+      }
+
+      #app {
+        width: 100%;
+        height: 100%;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+        background: #fff;
+      }
+
+      @media (max-width: 1200px) {
+        :root {
+          --sidebar-open: 320px;
+        }
+      }
     </style>
   </head>
   <body>
-    <div id="toolbar">
-      <input id="fileInput" type="file" />
-      <button id="uploadBtn">Upload</button>
-      <button id="convertBtn">Convert</button>
-      <button id="openBtn">Open Viewer</button>
-      <button id="zoomInBtn">Zoom In</button>
-      <button id="zoomOutBtn">Zoom Out</button>
-      <button id="homeBtn">Home</button>
-      <button id="panOnBtn">Pan On</button>
-      <button id="panOffBtn">Pan Off</button>
-      <button id="selectBtn">Select</button>
-      <button id="areaSelectBtn">Area Select</button>
-      <button id="orbitBtn">Orbit</button>
-      <button id="rotateZBtn">Rotate Z</button>
-      <button id="walkThroughBtn">Walk Through</button>
-      <button id="zoomWindowBtn">Zoom Window</button>
-      <button id="zoomFitBtn">Zoom Fit</button>
-      <button id="drawModeShadedBtn">DrawMode Shaded</button>
-      <button id="drawModeWireframeBtn">DrawMode Wireframe</button>
-      <button id="drawModeHiddenLineBtn">DrawMode Hidden Line</button>
-      <button id="drawModeShadedWireBtn">DrawMode Shaded Wire</button>
-      <button id="drawModeXrayBtn">DrawMode XRay</button>
-      <button id="drawModeGhostingBtn">DrawMode Ghosting</button>
-      <button id="explodeHalfBtn">Explode 0.5</button>
-      <button id="explodeOffBtn">Explode Off</button>
-      <button id="openClippingBtn">Open Clipping</button>
-      <button id="openSettingBtn">Open Setting</button>
-      <button id="openStatesObjectsBtn">Open States Objects</button>
-      <button id="openLinkedObjectsBtn">Open Linked Objects</button>
-      <!-- <button id="disableAll3dToolbarBtn">Disable All 3D Toolbar</button>
-      <button id="enableAll3dToolbarBtn">Enable All 3D Toolbar</button>
-      <button id="disableAllPdfToolbarBtn">Disable All PDF Toolbar</button>
-      <button id="enableAllPdfToolbarBtn">Enable All PDF Toolbar</button> -->
-    </div>
+    <div id="layout" class="sidebar-open">
+      <aside id="sidebar">
+        <div class="sidebar-head">
+          <h3 class="sidebar-title">SDK Controls</h3>
+          <button id="toggleSidebarBtn" title="Toggle Sidebar" aria-label="Toggle Sidebar">&lt;</button>
+        </div>
 
-    <div id="status">
-      <p id="statusText">Idle</p>
-    </div>
+        <div class="sidebar-content">
+          <div class="card">
+            <h4>File Pipeline</h4>
+            <div class="stack">
+              <input id="fileInput" type="file" />
+              <div class="row">
+                <button id="uploadBtn">Upload</button>
+                <button id="convertBtn">Convert</button>
+              </div>
+              <button id="openBtn" class="primary">Open Viewer</button>
+              <div id="status" class="status-box">
+                <span id="statusText">Idle</span>
+              </div>
+            </div>
+          </div>
 
-    <div id="app" style="width: 100%; height: 550px"></div>
+          <div class="card">
+            <h4>Camera</h4>
+            <div class="row">
+              <button id="zoomInBtn">Zoom In</button>
+              <button id="zoomOutBtn">Zoom Out</button>
+            </div>
+            <div class="stack" style="margin-top: 8px;">
+              <button id="homeBtn">Home</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h4>Interaction</h4>
+            <div class="row">
+              <button id="panOnBtn">Pan On</button>
+              <button id="panOffBtn">Pan Off</button>
+            </div>
+            <div class="row" style="margin-top: 8px;">
+              <button id="selectBtn">Select</button>
+              <button id="areaSelectBtn">Area Select</button>
+            </div>
+            <div class="row" style="margin-top: 8px;">
+              <button id="orbitBtn">Orbit</button>
+              <button id="rotateZBtn">Rotate Z</button>
+            </div>
+            <div class="row" style="margin-top: 8px;">
+              <button id="walkThroughBtn">Walk Through</button>
+              <button id="zoomWindowBtn">Zoom Window</button>
+            </div>
+            <div class="stack" style="margin-top: 8px;">
+              <button id="zoomFitBtn">Zoom Fit</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h4>Draw Mode</h4>
+            <div class="row">
+              <button id="drawModeShadedBtn">Shaded</button>
+              <button id="drawModeWireframeBtn">Wireframe</button>
+            </div>
+            <div class="row" style="margin-top: 8px;">
+              <button id="drawModeHiddenLineBtn">Hidden Line</button>
+              <button id="drawModeShadedWireBtn">Shaded Wire</button>
+            </div>
+            <div class="row" style="margin-top: 8px;">
+              <button id="drawModeXrayBtn">XRay</button>
+              <button id="drawModeGhostingBtn">Ghosting</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h4>Explode</h4>
+            <div class="stack">
+              <input id="explodePercentInput" type="text" placeholder="Explode percent (0-100)" />
+              <button id="applyExplodeBtn">Apply Explode</button>
+            </div>
+            <div class="row" style="margin-top: 8px;">
+              <button id="explodeOffBtn">Explode Off</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h4>Clipping</h4>
+            <div class="row">
+              <button id="openClippingBtn">Open Clipping</button>
+              <button id="closeClippingBtn">Close Clipping</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h4>Cutting Planes</h4>
+            <div class="row">
+              <button id="cuttingCloseSectionsBtn">Close</button>
+              <button id="cuttingMultiBtn">Multi</button>
+            </div>
+            <div class="row" style="margin-top: 8px;">
+              <button id="cuttingToggleSelectionBtn">Toggle Selection</button>
+              <button id="cuttingTogglePlanesBtn">Toggle Planes</button>
+            </div>
+            <div class="row" style="margin-top: 8px;">
+              <button id="cuttingPlaneXBtn">Plane X</button>
+              <button id="cuttingPlaneYBtn">Plane Y</button>
+            </div>
+            <div class="row" style="margin-top: 8px;">
+              <button id="cuttingPlaneZBtn">Plane Z</button>
+              <button id="cuttingPlaneBoxBtn">Plane Box</button>
+            </div>
+            <div class="row" style="margin-top: 8px;">
+              <button id="cuttingRotateBoxBtn">Rotate Box</button>
+              <button id="cuttingReverseXBtn">Reverse X</button>
+            </div>
+            <div class="row" style="margin-top: 8px;">
+              <button id="cuttingReverseYBtn">Reverse Y</button>
+              <button id="cuttingReverseZBtn">Reverse Z</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h4>Panels</h4>
+            <div class="row">
+              <button id="openSettingBtn">Open Setting</button>
+              <button id="closeSettingBtn">Close Setting</button>
+            </div>
+            <div class="row" style="margin-top: 8px;">
+              <button id="openStatesObjectsBtn">Open States</button>
+              <button id="closeStatesObjectsBtn">Close States</button>
+            </div>
+            <div class="row" style="margin-top: 8px;">
+              <button id="openLinkedObjectsBtn">Open Linked</button>
+              <button id="closeLinkedObjectsBtn">Close Linked</button>
+            </div>
+            <div class="row" style="margin-top: 8px;">
+              <button id="openModelTreeBtn">Open Model Tree</button>
+              <button id="closeModelTreeBtn">Close Model Tree</button>
+            </div>
+            <div class="row" style="margin-top: 8px;">
+              <button id="openObjectPropertiesBtn">Open Properties</button>
+              <button id="closeObjectPropertiesBtn">Close Properties</button>
+            </div>
+            <div class="row" style="margin-top: 8px;">
+              <button id="openSheetsBtn">Open Sheets</button>
+              <button id="closeSheetsBtn">Close Sheets</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h4>Sheets API</h4>
+            <div class="stack">
+              <button id="getSheetsBtn">Get Sheets</button>
+            </div>
+            <div class="stack" style="margin-top: 8px;">
+              <input id="sheetIdInput" type="text" placeholder="Enter sheetId" />
+              <button id="applySheetByIdBtn">Apply Sheet ID</button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <main id="viewer-pane">
+        <div id="app"></div>
+      </main>
+    </div>
 
     <script src="/bundle.js"></script>
   </body>
