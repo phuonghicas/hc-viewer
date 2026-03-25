@@ -148,7 +148,6 @@ type Viewer3DOptions = {
   viewerPath?: string;
   uploadPath?: string;
   file?: File;
-  notify?: boolean | { success?: boolean; error?: boolean };
 
   width?: string;
   height?: string;
@@ -165,7 +164,6 @@ type Viewer3DOptions = {
 | `viewerPath` | Viewer route path (default `/mainviewer`) |
 | `uploadPath` | Upload path query passed to upload endpoint (default `.`) |
 | `file` | Optional default file used by `viewer.files.*` |
-| `notify` | Reserved for notification behavior (currently not applied by SDK runtime) |
 | `width` | Iframe width (default `100%`) |
 | `height` | Iframe height (default `100%`) |
 | `sandbox` | Optional iframe sandbox attribute |
@@ -240,6 +238,68 @@ viewer.camera.on.home((payload) => {
   console.log("Home clicked", payload.timestamp);
 });
 ```
+
+## Markup Module (3D)
+
+`viewer.markup` currently documents and supports the 3D markup bridge.
+
+### Drawing actions
+
+```js
+viewer.markup.drawLine();
+viewer.markup.drawArrow();
+viewer.markup.drawCircle();
+viewer.markup.drawEllipse();
+viewer.markup.drawRectangle();
+viewer.markup.drawPolygon();
+viewer.markup.drawPolyline();
+viewer.markup.drawTextBox();
+viewer.markup.drawNote();
+viewer.markup.drawCallout();
+viewer.markup.drawCloud();
+viewer.markup.drawFreehand();
+```
+
+### Save, cancel, and list markups
+
+```js
+await viewer.markup.save();
+await viewer.markup.cancel();
+
+const markups = await viewer.markup.getList();
+console.log(markups);
+```
+
+Timeout options are supported for request-response calls:
+
+```js
+await viewer.markup.save({ timeoutMs: 15000 });
+await viewer.markup.cancel({ timeoutMs: 15000 });
+const markups = await viewer.markup.getList({ timeoutMs: 15000 });
+```
+
+Returned list shape:
+
+```ts
+type MarkupListItem = {
+  id: string;
+  viewId: string;
+  viewName?: string;
+  title: string;
+  type: string;
+  shapeName?: string;
+  createdDate?: string;
+  modifiedDate?: string;
+  createdBy?: string;
+  lastModifiedBy?: string;
+};
+```
+
+Notes:
+
+- Current SDK markup flow is intended for 3D viewer markup.
+- PDF markup is not documented as a supported SDK flow yet.
+- `save()`, `cancel()`, and `getList()` use viewer replies internally and resolve/reject as promises.
 
 ## Interaction Module
 
@@ -381,6 +441,9 @@ viewer.node.on.select((payload) => {
 | `camera.home` | `{ timestamp: number }` |
 | `node.select` | `{ nodeId: string, timestamp: number }` |
 | `interaction.panChange` | `{ enabled: boolean }` |
+| `markup.save` | Promise result from `viewer.markup.save()` |
+| `markup.cancel` | Promise result from `viewer.markup.cancel()` |
+| `markup.list` | Promise result from `viewer.markup.getList()` |
 
 ## Exported Types
 
@@ -486,6 +549,18 @@ const viewer = new Viewer3D({
 ## Build & Publish
 
 Detailed guide: [BUILD_AND_PUBLISH.md](./BUILD_AND_PUBLISH.md)
+
+## Web Docs
+
+A VitePress-based documentation site now lives in `docs/` so the markdown structure can evolve into a developer portal style similar to Procore.
+
+Run locally:
+
+```bash
+cd cxv-3dviewer-sdk
+npm install
+npm run docs:dev
+```
 
 ## Notes
 

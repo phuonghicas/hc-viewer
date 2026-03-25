@@ -13,7 +13,6 @@ export type FilesConfig = {
   baseUrl?: string;    
   viewerPath?: string;  
   uploadPath?: string;  
-  notify?: boolean | { success?: boolean; error?: boolean }; 
 };
 
 type CacheListItem = {

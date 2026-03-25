@@ -1,0 +1,13 @@
+{
+  "name": "cxv-3dviewer-sdk-docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "docs:dev": "node --require ./scripts/node-webcrypto.cjs ./node_modules/vitepress/dist/node/cli.js dev docs",
+    "docs:build": "node --require ./scripts/node-webcrypto.cjs ./node_modules/vitepress/dist/node/cli.js build docs",
+    "docs:preview": "node --require ./scripts/node-webcrypto.cjs ./node_modules/vitepress/dist/node/cli.js preview docs"
+  },
+  "devDependencies": {
+    "vitepress": "next"
+  }
+}

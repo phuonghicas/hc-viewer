@@ -268,12 +268,6 @@ type Viewer3DOptions = {
   
   // Security
   allowedOrigin?: string;
-
-  // Notifications
-  notify?: boolean | {
-    success?: boolean;
-    error?: boolean;
-  };
 };
 ```
 
@@ -316,26 +310,6 @@ const viewer = new Viewer3D({
 ```
 
 **Important**: Always set this in production to prevent security vulnerabilities.
-
-#### Notifications
-
-Reserved option for notification behavior (currently not applied by SDK runtime):
-
-```js
-// Reserved config example (currently no runtime effect)
-const viewer = new Viewer3D({
-  container: "#app",
-  notify: false,
-});
-
-// Reserved config example with object format
-const viewer = new Viewer3D({
-  container: "#app",
-  notify: { success: true, error: false },
-});
-```
-
----
 
 ### Files Module
 
@@ -557,6 +531,107 @@ viewer.interaction.on.panChange((payload) => {
   console.log("Pan enabled:", payload.enabled);
 });
 ```
+
+---
+
+### Markup Module
+
+Create and manage 3D markups through the SDK.
+
+Important:
+
+- The current SDK markup bridge is for 3D viewer flows.
+- PDF markup is not documented as a supported SDK flow yet.
+
+#### Drawing Actions
+
+```js
+viewer.markup.drawLine();
+viewer.markup.drawArrow();
+viewer.markup.drawCircle();
+viewer.markup.drawEllipse();
+viewer.markup.drawRectangle();
+viewer.markup.drawPolygon();
+viewer.markup.drawPolyline();
+viewer.markup.drawTextBox();
+viewer.markup.drawNote();
+viewer.markup.drawCallout();
+viewer.markup.drawCloud();
+viewer.markup.drawFreehand();
+```
+
+#### Save Current Markup Changes
+
+```js
+try {
+  await viewer.markup.save();
+  console.log("Markup saved");
+} catch (error) {
+  console.error("Failed to save markup:", error.message);
+}
+```
+
+With timeout:
+
+```js
+await viewer.markup.save({ timeoutMs: 15000 });
+```
+
+#### Cancel Current Markup Session
+
+```js
+try {
+  await viewer.markup.cancel();
+  console.log("Markup cancelled");
+} catch (error) {
+  console.error("Failed to cancel markup:", error.message);
+}
+```
+
+With timeout:
+
+```js
+await viewer.markup.cancel({ timeoutMs: 15000 });
+```
+
+#### Get Saved Markup List
+
+```js
+try {
+  const markups = await viewer.markup.getList();
+  console.log(markups);
+} catch (error) {
+  console.error("Failed to get markups:", error.message);
+}
+```
+
+With timeout:
+
+```js
+const markups = await viewer.markup.getList({ timeoutMs: 15000 });
+```
+
+Returned item shape:
+
+```ts
+type MarkupListItem = {
+  id: string;
+  viewId: string;
+  viewName?: string;
+  title: string;
+  type: string;
+  shapeName?: string;
+  createdDate?: string;
+  modifiedDate?: string;
+  createdBy?: string;
+  lastModifiedBy?: string;
+};
+```
+
+Implementation notes:
+
+- `save()`, `cancel()`, and `getList()` are promise-based request-response APIs.
+- They do not expose public `viewer.markup.on.*` listeners in the current SDK design.
 
 ---
 
@@ -1046,7 +1121,6 @@ const viewer = new Viewer3D({
   container: "#viewer",
   baseUrl: "https://api.example.com",
   viewerPath: "/mainviewer",
-  notify: false, // Reserved option (currently no runtime effect)
 });
 
 viewer.init();

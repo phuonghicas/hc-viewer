@@ -194,6 +194,43 @@
         min-height: 34px;
       }
 
+      .meta-box {
+        font-size: 12px;
+        color: var(--muted);
+        background: #f7f9ff;
+        border: 1px dashed #c9d5f7;
+        border-radius: 8px;
+        padding: 8px;
+      }
+
+      .event-log {
+        max-height: 180px;
+        overflow-y: auto;
+        background: #fbfcff;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 8px;
+      }
+
+      .event-item {
+        font-size: 12px;
+        line-height: 1.45;
+        color: var(--text);
+        padding: 6px 0;
+        border-bottom: 1px solid #edf1fb;
+        word-break: break-word;
+      }
+
+      .event-item:last-child {
+        border-bottom: 0;
+        padding-bottom: 0;
+      }
+
+      .event-empty {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
       #viewer-pane {
         flex: 1;
         min-width: 0;
@@ -374,6 +411,52 @@
             <div class="stack" style="margin-top: 8px;">
               <input id="sheetIdInput" type="text" placeholder="Enter sheetId" />
               <button id="applySheetByIdBtn">Apply Sheet ID</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h4>PDF Events</h4>
+            <div class="stack">
+              <div id="pdfCurrentPageBox" class="meta-box">Current page: -</div>
+              <button id="clearPdfEventLogBtn">Clear PDF Log</button>
+              <div id="pdfEventLog" class="event-log">
+                <div class="event-empty">No PDF events yet.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h4>Markup</h4>
+            <div class="row">
+              <button id="markupLineBtn">Line</button>
+              <button id="markupArrowBtn">Arrow</button>
+            </div>
+            <div class="row" style="margin-top: 8px;">
+              <button id="markupCircleBtn">Circle</button>
+              <button id="markupEllipseBtn">Ellipse</button>
+            </div>
+            <div class="row" style="margin-top: 8px;">
+              <button id="markupRectangleBtn">Rectangle</button>
+              <button id="markupPolygonBtn">Polygon</button>
+            </div>
+            <div class="row" style="margin-top: 8px;">
+              <button id="markupPolylineBtn">Polyline</button>
+              <button id="markupTextBoxBtn">Text Box</button>
+            </div>
+            <div class="row" style="margin-top: 8px;">
+              <button id="markupNoteBtn">Note</button>
+              <button id="markupCalloutBtn">Callout</button>
+            </div>
+            <div class="row" style="margin-top: 8px;">
+              <button id="markupCloudBtn">Cloud</button>
+              <button id="markupFreehandBtn">Freehand</button>
+            </div>
+            <div class="row" style="margin-top: 8px;">
+              <button id="markupSaveBtn" class="primary">Save Markup</button>
+              <button id="markupCancelBtn">Cancel Markup</button>
+            </div>
+            <div class="stack" style="margin-top: 8px;">
+              <button id="markupGetListBtn">Get Markup List</button>
             </div>
           </div>
         </div>

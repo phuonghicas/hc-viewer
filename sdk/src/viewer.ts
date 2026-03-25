@@ -8,10 +8,16 @@ import { NodeModule } from "./modules/node.module";
 import { FilesModule } from "./modules/files.module";
 import { ToolbarModule } from "./modules/toolbar.module";
 import { ModelTreeModule } from "./modules/model-tree.module";
+import { MarkupModule } from "./modules/markup.module";
 
 import {
   ViewerMessageType,
   ViewerMessageSource,
+  type MarkupListPayload,
+  type MarkupOperationResultPayload,
+  type PdfCurrentPagePayload,
+  type PdfModeEventPayload,
+  type PdfToolbarActionEventPayload,
   type SheetsListPayload,
   type TreeNodeIdsPayload,
   type IncomingMessage,
@@ -24,7 +30,6 @@ export type Viewer3DOptions = {
   viewerPath?: string;
   uploadPath?: string;
   file?: File;
-  notify?: boolean | { success?: boolean; error?: boolean };
 
   width?: string;
   height?: string;
@@ -46,6 +51,7 @@ export class Viewer3D {
   public files: FilesModule;
   public toolbar: ToolbarModule;
   public modelTree: ModelTreeModule;
+  public markup: MarkupModule;
 
   constructor(private options: Viewer3DOptions) {
     this.camera = new CameraModule(this);
@@ -54,6 +60,7 @@ export class Viewer3D {
     this.files = new FilesModule(this);
     this.toolbar = new ToolbarModule(this);
     this.modelTree = new ModelTreeModule(this);
+    this.markup = new MarkupModule(this);
   }
 
   // ===== options helpers =====
@@ -175,6 +182,67 @@ export class Viewer3D {
         this._emit("interaction:pan-change", { enabled: Boolean((data as any).payload?.enabled) });
         break;
 
+      case ViewerMessageType.PDF_PLAN_MODE: {
+        const payload = (data as IncomingMessage<PdfModeEventPayload>).payload;
+        this._emit("toolbar:pdf-plan-mode", {
+          mode: "plan",
+          timestamp: Number(payload?.timestamp) || Date.now(),
+        });
+        break;
+      }
+
+      case ViewerMessageType.PDF_DOCUMENT_MODE: {
+        const payload = (data as IncomingMessage<PdfModeEventPayload>).payload;
+        this._emit("toolbar:pdf-document-mode", {
+          mode: "document",
+          timestamp: Number(payload?.timestamp) || Date.now(),
+        });
+        break;
+      }
+
+      case ViewerMessageType.PDF_FIRST_PAGE: {
+        const payload = (data as IncomingMessage<PdfToolbarActionEventPayload>).payload;
+        this._emit("toolbar:pdf-first-page", {
+          timestamp: Number(payload?.timestamp) || Date.now(),
+        });
+        break;
+      }
+
+      case ViewerMessageType.PDF_PREVIOUS_PAGE: {
+        const payload = (data as IncomingMessage<PdfToolbarActionEventPayload>).payload;
+        this._emit("toolbar:pdf-previous-page", {
+          timestamp: Number(payload?.timestamp) || Date.now(),
+        });
+        break;
+      }
+
+      case ViewerMessageType.PDF_NEXT_PAGE: {
+        const payload = (data as IncomingMessage<PdfToolbarActionEventPayload>).payload;
+        this._emit("toolbar:pdf-next-page", {
+          timestamp: Number(payload?.timestamp) || Date.now(),
+        });
+        break;
+      }
+
+      case ViewerMessageType.PDF_LAST_PAGE: {
+        const payload = (data as IncomingMessage<PdfToolbarActionEventPayload>).payload;
+        this._emit("toolbar:pdf-last-page", {
+          timestamp: Number(payload?.timestamp) || Date.now(),
+        });
+        break;
+      }
+
+      case ViewerMessageType.PDF_CURRENT_PAGE: {
+        const payload = (data as IncomingMessage<PdfCurrentPagePayload>).payload;
+        if (!payload) break;
+        this._emit("toolbar:pdf-current-page", {
+          pageIndex: Number(payload.pageIndex) || 0,
+          pageNumber: Number(payload.pageNumber) || 1,
+          timestamp: Number(payload.timestamp) || Date.now(),
+        });
+        break;
+      }
+
       case ViewerMessageType.TREE_NODE_IDS: {
         const payload = (data as IncomingMessage<TreeNodeIdsPayload>).payload;
         if (!payload || !payload.requestId || !Array.isArray(payload.nodeIds)) break;
@@ -198,6 +266,52 @@ export class Viewer3D {
             viewId: sheet.viewId ? String(sheet.viewId) : undefined,
           })),
           activeSheetId: payload.activeSheetId ?? null,
+          timestamp: Number(payload.timestamp) || Date.now(),
+        });
+        break;
+      }
+
+      case ViewerMessageType.MARKUP_LIST: {
+        const payload = (data as IncomingMessage<MarkupListPayload>).payload;
+        if (!payload || !payload.requestId || !Array.isArray(payload.markups)) break;
+        this._emit("markup:list", {
+          requestId: String(payload.requestId),
+          markups: payload.markups.map((markup) => ({
+            id: String(markup.id),
+            viewId: String(markup.viewId),
+            viewName: markup.viewName ? String(markup.viewName) : undefined,
+            title: String(markup.title ?? ""),
+            type: String(markup.type ?? ""),
+            shapeName: markup.shapeName ? String(markup.shapeName) : undefined,
+            createdDate: markup.createdDate ? String(markup.createdDate) : undefined,
+            modifiedDate: markup.modifiedDate ? String(markup.modifiedDate) : undefined,
+            createdBy: markup.createdBy ? String(markup.createdBy) : undefined,
+            lastModifiedBy: markup.lastModifiedBy ? String(markup.lastModifiedBy) : undefined,
+          })),
+          timestamp: Number(payload.timestamp) || Date.now(),
+        });
+        break;
+      }
+
+      case ViewerMessageType.MARKUP_SAVE_RESULT: {
+        const payload = (data as IncomingMessage<MarkupOperationResultPayload>).payload;
+        if (!payload || !payload.requestId) break;
+        this._emit("markup:save", {
+          requestId: String(payload.requestId),
+          success: Boolean(payload.success),
+          error: payload.error ? String(payload.error) : undefined,
+          timestamp: Number(payload.timestamp) || Date.now(),
+        });
+        break;
+      }
+
+      case ViewerMessageType.MARKUP_CANCEL_RESULT: {
+        const payload = (data as IncomingMessage<MarkupOperationResultPayload>).payload;
+        if (!payload || !payload.requestId) break;
+        this._emit("markup:cancel", {
+          requestId: String(payload.requestId),
+          success: Boolean(payload.success),
+          error: payload.error ? String(payload.error) : undefined,
           timestamp: Number(payload.timestamp) || Date.now(),
         });
         break;

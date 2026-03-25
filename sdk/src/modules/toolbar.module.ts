@@ -83,6 +83,16 @@ const ALL_PDF_TOOLBAR_OPERATORS = [
 ];
 
 export class ToolbarModule {
+  public on = {
+    planMode: (cb: (payload: { mode: "plan" | "document"; timestamp: number }) => void) => this.viewer._on("toolbar:pdf-plan-mode", cb),
+    documentMode: (cb: (payload: { mode: "plan" | "document"; timestamp: number }) => void) => this.viewer._on("toolbar:pdf-document-mode", cb),
+    firstPage: (cb: (payload: { timestamp: number }) => void) => this.viewer._on("toolbar:pdf-first-page", cb),
+    previousPage: (cb: (payload: { timestamp: number }) => void) => this.viewer._on("toolbar:pdf-previous-page", cb),
+    nextPage: (cb: (payload: { timestamp: number }) => void) => this.viewer._on("toolbar:pdf-next-page", cb),
+    lastPage: (cb: (payload: { timestamp: number }) => void) => this.viewer._on("toolbar:pdf-last-page", cb),
+    currentPage: (cb: (payload: { pageIndex: number; pageNumber: number; timestamp: number }) => void) => this.viewer._on("toolbar:pdf-current-page", cb),
+  };
+
   constructor(private viewer: Viewer3D) {}
 
   setDisabled3D(operators: string[]) {

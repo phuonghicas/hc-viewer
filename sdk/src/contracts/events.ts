@@ -1,10 +1,28 @@
 // sdk/src/contracts/events.ts
+import type {
+  MarkupListItem,
+  MarkupOperationResultPayload,
+  PdfCurrentPagePayload,
+  PdfModeEventPayload,
+  PdfToolbarActionEventPayload,
+} from "./messages";
+
 export type ViewerEventMap = {
   "camera:home": { timestamp: number };
   "node:select": { nodeId: string; timestamp: number };
   "interaction:pan-change": { enabled: boolean };
+  "toolbar:pdf-plan-mode": PdfModeEventPayload;
+  "toolbar:pdf-document-mode": PdfModeEventPayload;
+  "toolbar:pdf-first-page": PdfToolbarActionEventPayload;
+  "toolbar:pdf-previous-page": PdfToolbarActionEventPayload;
+  "toolbar:pdf-next-page": PdfToolbarActionEventPayload;
+  "toolbar:pdf-last-page": PdfToolbarActionEventPayload;
+  "toolbar:pdf-current-page": PdfCurrentPagePayload;
   "modelTree:node-ids": { requestId: string; nodeIds: string[]; timestamp: number };
   "sheets:list": { requestId: string; sheets: { id: string | number; name: string; is3D?: boolean; viewId?: string }[]; activeSheetId?: string | number | null; timestamp: number };
+  "markup:list": { requestId: string; markups: MarkupListItem[]; timestamp: number };
+  "markup:save": MarkupOperationResultPayload;
+  "markup:cancel": MarkupOperationResultPayload;
 };
 
 // 2) Files pipeline (new)

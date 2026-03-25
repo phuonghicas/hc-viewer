@@ -59,6 +59,24 @@ window.addEventListener("DOMContentLoaded", () => {
   const getSheetsBtn = document.getElementById("getSheetsBtn");
   const sheetIdInput = document.getElementById("sheetIdInput");
   const applySheetByIdBtn = document.getElementById("applySheetByIdBtn");
+  const pdfCurrentPageBox = document.getElementById("pdfCurrentPageBox");
+  const pdfEventLog = document.getElementById("pdfEventLog");
+  const clearPdfEventLogBtn = document.getElementById("clearPdfEventLogBtn");
+  const markupLineBtn = document.getElementById("markupLineBtn");
+  const markupArrowBtn = document.getElementById("markupArrowBtn");
+  const markupCircleBtn = document.getElementById("markupCircleBtn");
+  const markupEllipseBtn = document.getElementById("markupEllipseBtn");
+  const markupRectangleBtn = document.getElementById("markupRectangleBtn");
+  const markupPolygonBtn = document.getElementById("markupPolygonBtn");
+  const markupPolylineBtn = document.getElementById("markupPolylineBtn");
+  const markupTextBoxBtn = document.getElementById("markupTextBoxBtn");
+  const markupNoteBtn = document.getElementById("markupNoteBtn");
+  const markupCalloutBtn = document.getElementById("markupCalloutBtn");
+  const markupCloudBtn = document.getElementById("markupCloudBtn");
+  const markupFreehandBtn = document.getElementById("markupFreehandBtn");
+  const markupSaveBtn = document.getElementById("markupSaveBtn");
+  const markupCancelBtn = document.getElementById("markupCancelBtn");
+  const markupGetListBtn = document.getElementById("markupGetListBtn");
 //   const disableAll3dToolbarBtn = document.getElementById("disableAll3dToolbarBtn");
 //   const enableAll3dToolbarBtn = document.getElementById("enableAll3dToolbarBtn");
 //   const disableAllPdfToolbarBtn = document.getElementById("disableAllPdfToolbarBtn");
@@ -78,6 +96,29 @@ window.addEventListener("DOMContentLoaded", () => {
 
   const setStatus = (text) => {
     if (statusText) statusText.textContent = text;
+  };
+
+  const appendPdfEventLog = (text) => {
+    if (!pdfEventLog) return;
+    const empty = pdfEventLog.querySelector(".event-empty");
+    if (empty) empty.remove();
+
+    const item = document.createElement("div");
+    item.className = "event-item";
+    item.textContent = `${new Date().toLocaleTimeString()} - ${text}`;
+    pdfEventLog.prepend(item);
+
+    while (pdfEventLog.children.length > 20) {
+      pdfEventLog.removeChild(pdfEventLog.lastElementChild);
+    }
+  };
+
+  const setPdfCurrentPage = (pageNumber, pageIndex) => {
+    if (!pdfCurrentPageBox) return;
+    pdfCurrentPageBox.textContent =
+      typeof pageIndex === "number"
+        ? `Current page: ${pageNumber} (index ${pageIndex})`
+        : `Current page: ${pageNumber}`;
   };
 
   const setSidebarCollapsed = (collapsed) => {
@@ -197,6 +238,33 @@ window.addEventListener("DOMContentLoaded", () => {
   viewer.camera.on.home((payload) => console.log("Home clicked:", payload));
   viewer.node.on.select((payload) => console.log("Node selected:", payload.nodeId));
   viewer.interaction.on.panChange((payload) => console.log("Pan state:", payload.enabled));
+  viewer.toolbar.on.planMode((payload) => {
+    appendPdfEventLog(`Switched PDF mode to ${payload.mode}.`);
+  });
+  viewer.toolbar.on.documentMode((payload) => {
+    appendPdfEventLog(`Switched PDF mode to ${payload.mode}.`);
+  });
+  viewer.toolbar.on.firstPage(() => {
+    appendPdfEventLog("Triggered First Page.");
+  });
+  viewer.toolbar.on.previousPage(() => {
+    appendPdfEventLog("Triggered Previous Page.");
+  });
+  viewer.toolbar.on.nextPage(() => {
+    appendPdfEventLog("Triggered Next Page.");
+  });
+  viewer.toolbar.on.lastPage(() => {
+    appendPdfEventLog("Triggered Last Page.");
+  });
+  viewer.toolbar.on.currentPage((payload) => {
+    setPdfCurrentPage(payload.pageNumber, payload.pageIndex);
+    appendPdfEventLog(`Current page changed to ${payload.pageNumber}.`);
+  });
+
+  clearPdfEventLogBtn?.addEventListener("click", () => {
+    if (!pdfEventLog) return;
+    pdfEventLog.innerHTML = '<div class="event-empty">No PDF events yet.</div>';
+  });
 
   zoomInBtn?.addEventListener("click", () => viewer.camera.zoomIn(10));
   zoomOutBtn?.addEventListener("click", () => viewer.camera.zoomOut(10));
@@ -272,6 +340,47 @@ window.addEventListener("DOMContentLoaded", () => {
     const sheetId = /^-?\d+$/.test(raw) ? Number(raw) : raw;
     viewer.toolbar.applySheet(sheetId);
     alert(`Applied sheetId: ${sheetId}`);
+  });
+
+  markupLineBtn?.addEventListener("click", () => viewer.markup.drawLine());
+  markupArrowBtn?.addEventListener("click", () => viewer.markup.drawArrow());
+  markupCircleBtn?.addEventListener("click", () => viewer.markup.drawCircle());
+  markupEllipseBtn?.addEventListener("click", () => viewer.markup.drawEllipse());
+  markupRectangleBtn?.addEventListener("click", () => viewer.markup.drawRectangle());
+  markupPolygonBtn?.addEventListener("click", () => viewer.markup.drawPolygon());
+  markupPolylineBtn?.addEventListener("click", () => viewer.markup.drawPolyline());
+  markupTextBoxBtn?.addEventListener("click", () => viewer.markup.drawTextBox());
+  markupNoteBtn?.addEventListener("click", () => viewer.markup.drawNote());
+  markupCalloutBtn?.addEventListener("click", () => viewer.markup.drawCallout());
+  markupCloudBtn?.addEventListener("click", () => viewer.markup.drawCloud());
+  markupFreehandBtn?.addEventListener("click", () => viewer.markup.drawFreehand());
+  markupSaveBtn?.addEventListener("click", async () => {
+    try {
+      await viewer.markup.save();
+      alert("Markup saved successfully.");
+    } catch (error) {
+      console.error(error);
+      alert(`Save markup failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  });
+  markupCancelBtn?.addEventListener("click", async () => {
+    try {
+      await viewer.markup.cancel();
+      alert("Markup cancelled successfully.");
+    } catch (error) {
+      console.error(error);
+      alert(`Cancel markup failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  });
+  markupGetListBtn?.addEventListener("click", async () => {
+    try {
+      const markups = await viewer.markup.getList();
+      console.log("Markups:", markups);
+      alert(`Found ${markups.length} markups. Check console for details.`);
+    } catch (error) {
+      console.error(error);
+      alert(`Get markup list failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
   });
 //   disableAll3dToolbarBtn?.addEventListener("click", () => viewer.toolbar.disableAll3D());
 //   enableAll3dToolbarBtn?.addEventListener("click", () => viewer.toolbar.enableAll3D());

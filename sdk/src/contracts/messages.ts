@@ -3,6 +3,13 @@ export enum ViewerMessageType {
   ZOOM = "viewer-zoom",
   DRAW_MODE = "viewer-draw-mode",
   EXPLODE = "viewer-explode",
+  MARKUP_ACTION = "viewer-markup-action",
+  MARKUP_SAVE = "viewer-markup-save",
+  MARKUP_CANCEL = "viewer-markup-cancel",
+  MARKUP_GET_LIST = "viewer-markup-get-list",
+  MARKUP_SAVE_RESULT = "viewer-markup-save-result",
+  MARKUP_CANCEL_RESULT = "viewer-markup-cancel-result",
+  MARKUP_LIST = "viewer-markup-list",
   HOME = "viewer-home",
   PAN_TOGGLE = "viewer-pan-toggle",
   SELECT = "viewer-select",
@@ -22,6 +29,13 @@ export enum ViewerMessageType {
   TREE_SELECT_NODE = "viewer-tree-select-node",
   TREE_GET_NODE_IDS = "viewer-tree-get-node-ids",
   TREE_NODE_IDS = "viewer-tree-node-ids",
+  PDF_PLAN_MODE = "viewer-pdf-plan-mode",
+  PDF_DOCUMENT_MODE = "viewer-pdf-document-mode",
+  PDF_FIRST_PAGE = "viewer-pdf-first-page",
+  PDF_PREVIOUS_PAGE = "viewer-pdf-previous-page",
+  PDF_NEXT_PAGE = "viewer-pdf-next-page",
+  PDF_LAST_PAGE = "viewer-pdf-last-page",
+  PDF_CURRENT_PAGE = "viewer-pdf-current-page",
 
   HOME_CLICK = "viewer-home-click",
   NODE_SELECT = "viewer-node-select",
@@ -58,6 +72,54 @@ export type DrawModePayload = {
 
 export type ExplodePayload = {
   magnitude: number;
+};
+
+export type MarkupAction =
+  | "line"
+  | "arrow"
+  | "circle"
+  | "ellipse"
+  | "rectangle"
+  | "polygon"
+  | "polyline"
+  | "textbox"
+  | "note"
+  | "callout"
+  | "cloud"
+  | "freehand";
+
+export type MarkupActionPayload = {
+  action: MarkupAction;
+};
+
+export type MarkupRequestPayload = {
+  requestId: string;
+};
+
+export type MarkupOperationResultPayload = {
+  requestId: string;
+  success: boolean;
+  timestamp: number;
+  error?: string;
+};
+
+export type MarkupListItem = {
+  id: string;
+  viewId: string;
+  viewName?: string;
+  title: string;
+  type: string;
+  shapeName?: string;
+  createdDate?: string;
+  modifiedDate?: string;
+  createdBy?: string;
+  lastModifiedBy?: string;
+};
+
+export type MarkupListPayload = {
+  requestId: string;
+  markups: MarkupListItem[];
+  timestamp: number;
 };
 
 export type PanelTarget =
@@ -130,5 +192,20 @@ export type TreeGetNodeIdsPayload = {
 export type TreeNodeIdsPayload = {
   requestId: string;
   nodeIds: string[];
+  timestamp: number;
+};
+
+export type PdfModeEventPayload = {
+  mode: "plan" | "document";
+  timestamp: number;
+};
+
+export type PdfToolbarActionEventPayload = {
+  timestamp: number;
+};
+
+export type PdfCurrentPagePayload = {
+  pageIndex: number;
+  pageNumber: number;
   timestamp: number;
 };

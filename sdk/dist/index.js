@@ -499,6 +499,15 @@ var ALL_PDF_TOOLBAR_OPERATORS = [
 var ToolbarModule = class {
   constructor(viewer) {
     this.viewer = viewer;
+    this.on = {
+      planMode: (cb) => this.viewer._on("toolbar:pdf-plan-mode", cb),
+      documentMode: (cb) => this.viewer._on("toolbar:pdf-document-mode", cb),
+      firstPage: (cb) => this.viewer._on("toolbar:pdf-first-page", cb),
+      previousPage: (cb) => this.viewer._on("toolbar:pdf-previous-page", cb),
+      nextPage: (cb) => this.viewer._on("toolbar:pdf-next-page", cb),
+      lastPage: (cb) => this.viewer._on("toolbar:pdf-last-page", cb),
+      currentPage: (cb) => this.viewer._on("toolbar:pdf-current-page", cb)
+    };
   }
   setDisabled3D(operators) {
     this.postConfig({ format: "3d", mode: "set", operators });
@@ -697,6 +706,101 @@ var ModelTreeModule = class {
   }
 };
 
+// src/modules/markup.module.ts
+function createRequestId3(prefix) {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+var MarkupModule = class {
+  constructor(viewer) {
+    this.viewer = viewer;
+  }
+  action(action) {
+    this.viewer.postToViewer("viewer-markup-action" /* MARKUP_ACTION */, { action });
+  }
+  drawLine() {
+    this.action("line");
+  }
+  drawArrow() {
+    this.action("arrow");
+  }
+  drawCircle() {
+    this.action("circle");
+  }
+  drawEllipse() {
+    this.action("ellipse");
+  }
+  drawRectangle() {
+    this.action("rectangle");
+  }
+  drawPolygon() {
+    this.action("polygon");
+  }
+  drawPolyline() {
+    this.action("polyline");
+  }
+  drawTextBox() {
+    this.action("textbox");
+  }
+  drawNote() {
+    this.action("note");
+  }
+  drawCallout() {
+    this.action("callout");
+  }
+  drawCloud() {
+    this.action("cloud");
+  }
+  drawFreehand() {
+    this.action("freehand");
+  }
+  save(options) {
+    return this.runRequest("markup-save", "viewer-markup-save" /* MARKUP_SAVE */, "markup:save", options);
+  }
+  cancel(options) {
+    return this.runRequest("markup-cancel", "viewer-markup-cancel" /* MARKUP_CANCEL */, "markup:cancel", options);
+  }
+  getList(options) {
+    var _a;
+    const requestId = createRequestId3("markup-list");
+    const timeoutMs = Math.max(1e3, (_a = options == null ? void 0 : options.timeoutMs) != null ? _a : 1e4);
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        off();
+        reject(new Error("Timeout while getting markup list from viewer"));
+      }, timeoutMs);
+      const off = this.viewer._on("markup:list", (payload) => {
+        if (payload.requestId !== requestId) return;
+        clearTimeout(timer);
+        off();
+        resolve(payload.markups);
+      });
+      this.viewer.postToViewer("viewer-markup-get-list" /* MARKUP_GET_LIST */, { requestId });
+    });
+  }
+  runRequest(prefix, messageType, eventName, options) {
+    var _a;
+    const requestId = createRequestId3(prefix);
+    const timeoutMs = Math.max(1e3, (_a = options == null ? void 0 : options.timeoutMs) != null ? _a : 1e4);
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        off();
+        reject(new Error(`Timeout while waiting for ${prefix} result from viewer`));
+      }, timeoutMs);
+      const off = this.viewer._on(eventName, (payload) => {
+        if (payload.requestId !== requestId) return;
+        clearTimeout(timer);
+        off();
+        if (payload.success) {
+          resolve();
+          return;
+        }
+        reject(new Error(payload.error || `Viewer ${prefix} failed`));
+      });
+      this.viewer.postToViewer(messageType, { requestId });
+    });
+  }
+};
+
 // src/viewer.ts
 var Viewer3D = class {
   constructor(options) {
@@ -719,6 +823,60 @@ var Viewer3D = class {
         case "viewer-pan-change" /* PAN_CHANGE */:
           this._emit("interaction:pan-change", { enabled: Boolean((_c = data.payload) == null ? void 0 : _c.enabled) });
           break;
+        case "viewer-pdf-plan-mode" /* PDF_PLAN_MODE */: {
+          const payload = data.payload;
+          this._emit("toolbar:pdf-plan-mode", {
+            mode: "plan",
+            timestamp: Number(payload == null ? void 0 : payload.timestamp) || Date.now()
+          });
+          break;
+        }
+        case "viewer-pdf-document-mode" /* PDF_DOCUMENT_MODE */: {
+          const payload = data.payload;
+          this._emit("toolbar:pdf-document-mode", {
+            mode: "document",
+            timestamp: Number(payload == null ? void 0 : payload.timestamp) || Date.now()
+          });
+          break;
+        }
+        case "viewer-pdf-first-page" /* PDF_FIRST_PAGE */: {
+          const payload = data.payload;
+          this._emit("toolbar:pdf-first-page", {
+            timestamp: Number(payload == null ? void 0 : payload.timestamp) || Date.now()
+          });
+          break;
+        }
+        case "viewer-pdf-previous-page" /* PDF_PREVIOUS_PAGE */: {
+          const payload = data.payload;
+          this._emit("toolbar:pdf-previous-page", {
+            timestamp: Number(payload == null ? void 0 : payload.timestamp) || Date.now()
+          });
+          break;
+        }
+        case "viewer-pdf-next-page" /* PDF_NEXT_PAGE */: {
+          const payload = data.payload;
+          this._emit("toolbar:pdf-next-page", {
+            timestamp: Number(payload == null ? void 0 : payload.timestamp) || Date.now()
+          });
+          break;
+        }
+        case "viewer-pdf-last-page" /* PDF_LAST_PAGE */: {
+          const payload = data.payload;
+          this._emit("toolbar:pdf-last-page", {
+            timestamp: Number(payload == null ? void 0 : payload.timestamp) || Date.now()
+          });
+          break;
+        }
+        case "viewer-pdf-current-page" /* PDF_CURRENT_PAGE */: {
+          const payload = data.payload;
+          if (!payload) break;
+          this._emit("toolbar:pdf-current-page", {
+            pageIndex: Number(payload.pageIndex) || 0,
+            pageNumber: Number(payload.pageNumber) || 1,
+            timestamp: Number(payload.timestamp) || Date.now()
+          });
+          break;
+        }
         case "viewer-tree-node-ids" /* TREE_NODE_IDS */: {
           const payload = data.payload;
           if (!payload || !payload.requestId || !Array.isArray(payload.nodeIds)) break;
@@ -748,6 +906,52 @@ var Viewer3D = class {
           });
           break;
         }
+        case "viewer-markup-list" /* MARKUP_LIST */: {
+          const payload = data.payload;
+          if (!payload || !payload.requestId || !Array.isArray(payload.markups)) break;
+          this._emit("markup:list", {
+            requestId: String(payload.requestId),
+            markups: payload.markups.map((markup) => {
+              var _a2, _b2;
+              return {
+                id: String(markup.id),
+                viewId: String(markup.viewId),
+                viewName: markup.viewName ? String(markup.viewName) : void 0,
+                title: String((_a2 = markup.title) != null ? _a2 : ""),
+                type: String((_b2 = markup.type) != null ? _b2 : ""),
+                shapeName: markup.shapeName ? String(markup.shapeName) : void 0,
+                createdDate: markup.createdDate ? String(markup.createdDate) : void 0,
+                modifiedDate: markup.modifiedDate ? String(markup.modifiedDate) : void 0,
+                createdBy: markup.createdBy ? String(markup.createdBy) : void 0,
+                lastModifiedBy: markup.lastModifiedBy ? String(markup.lastModifiedBy) : void 0
+              };
+            }),
+            timestamp: Number(payload.timestamp) || Date.now()
+          });
+          break;
+        }
+        case "viewer-markup-save-result" /* MARKUP_SAVE_RESULT */: {
+          const payload = data.payload;
+          if (!payload || !payload.requestId) break;
+          this._emit("markup:save", {
+            requestId: String(payload.requestId),
+            success: Boolean(payload.success),
+            error: payload.error ? String(payload.error) : void 0,
+            timestamp: Number(payload.timestamp) || Date.now()
+          });
+          break;
+        }
+        case "viewer-markup-cancel-result" /* MARKUP_CANCEL_RESULT */: {
+          const payload = data.payload;
+          if (!payload || !payload.requestId) break;
+          this._emit("markup:cancel", {
+            requestId: String(payload.requestId),
+            success: Boolean(payload.success),
+            error: payload.error ? String(payload.error) : void 0,
+            timestamp: Number(payload.timestamp) || Date.now()
+          });
+          break;
+        }
         default:
           break;
       }
@@ -758,6 +962,7 @@ var Viewer3D = class {
     this.files = new FilesModule(this);
     this.toolbar = new ToolbarModule(this);
     this.modelTree = new ModelTreeModule(this);
+    this.markup = new MarkupModule(this);
   }
   // ===== options helpers =====
   getOptions() {
