@@ -1,18 +1,13 @@
 {
-  "name": "hc-viewer",
-  "version": "1.0.0",
-  "description": "Lightweight text viewer SDK",
-  "main": "dist/index.cjs.js",
-  "module": "dist/index.esm.js",
-  "types": "dist/index.d.ts",
-  "files": ["dist"],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/phuonghicas/hc-viewer.git"
+  "name": "cxv-3dviewer-sdk-docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "docs:dev": "node --require ./scripts/node-webcrypto.cjs ./node_modules/vitepress/dist/node/cli.js dev docs",
+    "docs:build": "node --require ./scripts/node-webcrypto.cjs ./node_modules/vitepress/dist/node/cli.js build docs",
+    "docs:preview": "node --require ./scripts/node-webcrypto.cjs ./node_modules/vitepress/dist/node/cli.js preview docs"
   },
-  "homepage": "https://github.com/phuonghicas/hc-viewer#readme",
-  "bugs": {
-    "url": "https://github.com/phuonghicas/hc-viewer/issues"
-  },
-  "license": "MIT"
+  "devDependencies": {
+    "vitepress": "next"
+  }
 }

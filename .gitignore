@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+sdk/node_modules/
+example/**/node_modules/
+
+# Docs build/cache
+docs/.vitepress/dist/
+docs/.vitepress/cache/
+docs/.vitepress/.temp/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
